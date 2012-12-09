@@ -4,7 +4,6 @@ import getpass
 import json
 import os
 import subprocess
-from subprocess import CalledProcessError
 import sys
 import tempfile
 
@@ -16,7 +15,7 @@ from urllib2_file import newHTTPHandler
 from utils import compute_md5
 
 PROGBAR_LEN = 30
-OGRESERVER = "ogre.oii.me.uk"
+OGRESERVER = "www.ogre.me.uk"
 
 
 def doit(ebook_home=None, username=None, password=None):
@@ -158,16 +157,34 @@ def doit(ebook_home=None, username=None, password=None):
                 f_ogre_cache.write("%s\n" % item[0])
 
                 if authortitle not in ebooks_dict.keys():
-                    ebooks_dict[authortitle] = {}
+                    ebooks_dict[authortitle] = {
+                        'path': item[0],
+                        'filename': item[1],
+                        'format': item[2][1:],
+                        'size': item[3],
+                        'filemd5': item[4],
+                        'owner': username,
+                    }
+                else:
+                    overwrite = False
 
-                # create dataset organised by authortitle and format
-                ebooks_dict[authortitle][item[2][1:]] = {
-                    'path': item[0],
-                    'filename': item[1],
-                    'size': item[3],
-                    'filemd5': item[4],
-                    'owner': username,
-                }
+                    # upload in favoured formats: mobi, azw, pdf, epub
+                    if ebooks_dict[authortitle]['format'] == "epub" and item[2][1:] in ('mobi', 'azw', 'pdf'):
+                        overwrite = True
+                    elif ebooks_dict[authortitle]['format'] == "pdf" and item[2][1:] in ('mobi', 'azw'):
+                        overwrite = True
+                    elif ebooks_dict[authortitle]['format'] == "awz" and item[2][1:] == "mobi":
+                        overwrite = True
+
+                    if overwrite:
+                        ebooks_dict[authortitle] = {
+                            'path': item[0],
+                            'filename': item[1],
+                            'format': item[2][1:],
+                            'size': item[3],
+                            'filemd5': item[4],
+                            'owner': username,
+                        }
 
             i += 1
             update_progress(i / total)
@@ -184,7 +201,7 @@ def doit(ebook_home=None, username=None, password=None):
     print "Come on sucker, lick my battery"
 
     if len(errors) > 0:
-        print "Sadly some errors occurred:"
+        print "Sadly, some errors occurred:"
         for e in errors:
             print "\t[%s] %s" % (e[0], e[1])
 
@@ -229,47 +246,38 @@ def doit(ebook_home=None, username=None, password=None):
 
     print "Uploading %s file%s. Go make a brew." % (str(len(response['ebooks_to_upload'])), plural)
 
-    #import mmap
-
     # iterate all user's found books
     for authortitle in ebooks_dict.keys():
-        for fmt in ebooks_dict[authortitle]:
-            # upload each requested by the server
-            for upload in response['ebooks_to_upload']:
-                if upload['filemd5'] == ebooks_dict[authortitle][fmt]['filemd5']:
-                    try:
-                        f = open(ebooks_dict[authortitle][fmt]['path'], "rb")
-                        #mmf = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+        # upload each requested by the server
+        for upload in response['ebooks_to_upload']:
+            if upload['filemd5'] == ebooks_dict[authortitle]['filemd5']:
+                try:
+                    f = open(ebooks_dict[authortitle]['path'], "rb")
 
-                        # configure for uploads
-                        opener = urllib2.build_opener(newHTTPHandler())
-                        #urllib2.install_opener(opener)
+                    # configure for uploads
+                    opener = urllib2.build_opener(newHTTPHandler())
 
-                        # build the post params
-                        params = {
-                            'sdb_key': upload['sdb_key'],
-                            'authortitle': upload['authortitle'].encode("UTF-8"),
-                            'filemd5': upload['filemd5'],
-                            'format': upload['format'],
-                            'ebook': f,
-                        }
-                        req = opener.open("http://%s/upload/%s" % (OGRESERVER, urllib.quote_plus(api_key)), params)
-                        #req.add_data(params)
-                        #resp = urllib2.urlopen(req)
-                        data = req.read()
+                    # build the post params
+                    params = {
+                        'sdb_key': upload['sdb_key'],
+                        'authortitle': upload['authortitle'].encode("UTF-8"),
+                        'filemd5': upload['filemd5'],
+                        'version': upload['version'],
+                        'format': upload['format'],
+                        'ebook': f,
+                    }
+                    req = opener.open("http://%s/upload/%s" % (OGRESERVER, urllib.quote_plus(api_key)), params)
+                    data = req.read()
 
-                        print data
-                        #upload['celery_task_id'] = msg
+                    print data
 
-                    except (HTTPError, URLError), e:
-                        print "Something went wrong, contact tha spodz with..\nCode spinach: %s" % e
-                        sys.exit(1)
-                    except IOError, e:
-                        continue
-                    finally:
-                        #if mmf is not None:
-                        #    mmf.close()
-                        f.close()
+                except (HTTPError, URLError), e:
+                    print "Something went wrong, contact tha spodz with..\nCode spinach: %s" % e
+                    sys.exit(1)
+                except IOError, e:
+                    continue
+                finally:
+                    f.close()
 
     return
 
