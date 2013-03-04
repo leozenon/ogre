@@ -14,13 +14,13 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(120), unique=True)
     display_name = db.Column(db.String(50), unique=True)
     api_key_expires = db.Column(db.DateTime)
-    points = db.Column(db.Integer)
+    points = db.Column(db.Integer, default=0)
     badges = db.relationship(UserBadge, backref='user', lazy='dynamic')
 
-    #def __init__(self, username, password, email):
-    #    self.username = username
-    #    self.password = security.pwd_context.encrypt(password)
-    #    self.email = email
+    def __init__(self, username, password, email):
+        self.username = username
+        self.password = security.pwd_context.encrypt(password)
+        self.email = email
 
     @staticmethod
     def authenticate(username, password):

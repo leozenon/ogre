@@ -16,6 +16,16 @@ def verify_s3():
 
 
 @manager.command
+def create_user(username, password, email):
+    from flask.ext.sqlalchemy import SQLAlchemy
+    from ogreserver.models.user import User
+    user = User(username, password, email)
+    db = SQLAlchemy(app)
+    db.session.add(user)
+    db.session.commit()
+
+
+@manager.command
 def create_password_hash(password):
     from ogreserver.models import security
     print security.pwd_context.encrypt(password)
