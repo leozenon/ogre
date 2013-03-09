@@ -17,11 +17,14 @@ def verify_s3():
 
 @manager.command
 def create_db():
+    "Create the OGRE authentication DB"
     db.create_all()
+    print "Database created"
 
 
 @manager.command
 def create_user(username, password, email):
+    "Create a new user for OGRE"
     from ogreserver.models.user import User
     user = User(username, password, email)
     db.session.add(user)
@@ -29,13 +32,8 @@ def create_user(username, password, email):
 
 
 @manager.command
-def create_password_hash(password):
-    from ogreserver.models import security
-    print security.pwd_context.encrypt(password)
-
-
-@manager.command
 def kill():
+    "Completely clear the SDB storage. USE WITH CAUTION!"
     import boto
     sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
     sdb.delete_domain("ogre_ebooks")
