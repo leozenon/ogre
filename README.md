@@ -30,6 +30,7 @@ Ogreserver Install
 
     ```bash
     git clone git@github.com:mafrosis/ogre.git
+    cd ogre/ogreserver
     git checkout develop
     ```
 
@@ -43,7 +44,8 @@ Ogreserver Install
 3. Create the auth DB:
 
     ```bash
-    $ mysql -u root -p < config/schema-mysql2.sql
+    $ mysql -u root -p -e "create database ogre character set = 'utf8';"
+    $ ./manage.py create_db
     ```
 
 4. Start gunicorn as a development server:

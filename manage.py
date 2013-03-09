@@ -3,7 +3,7 @@
 from __future__ import absolute_import
 from flask.ext.script import Manager
 
-from ogreserver import app
+from ogreserver import app, db
 
 manager = Manager(app)
 
@@ -16,11 +16,14 @@ def verify_s3():
 
 
 @manager.command
+def create_db():
+    db.create_all()
+
+
+@manager.command
 def create_user(username, password, email):
-    from flask.ext.sqlalchemy import SQLAlchemy
     from ogreserver.models.user import User
     user = User(username, password, email)
-    db = SQLAlchemy(app)
     db.session.add(user)
     db.session.commit()
 
