@@ -1,18 +1,14 @@
-import os
-
-def numCPUs():
-	if not hasattr(os, "sysconf"):
-		raise RuntimeError("No sysconf detected.")
-	return os.sysconf("SC_NPROCESSORS_ONLN")
+#import multiprocessing
 
 bind = '127.0.0.1:8005'
-workers = numCPUs() * 2 + 1
+#workers = multiprocessing.cpu_count() * 2 + 1
+worker_class = 'socketio.sgunicorn.GeventSocketIOWorker'
 backlog = 2048
-worker_class = "sync"
+worker_class = "gevent"
 debug = True
 #daemon = True
 proc_name = 'ogre.oii.me.uk'
-pidfile = '/tmp/gunicorn.pid'
-logfile = '/var/log/gunicorn/debug.log'
+pidfile = '/tmp/gunicorn-ogre.pid'
+#logfile = '/var/log/gunicorn/debug.log'
 #loglevel = 'debug'
 
