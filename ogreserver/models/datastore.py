@@ -7,7 +7,6 @@ import boto
 from boto.exception import S3ResponseError
 
 from ogreserver import app
-from ogreserver.models.factory import Factory
 
 
 class DataStore():
@@ -16,12 +15,12 @@ class DataStore():
         self.user = user
 
     def list(self, next_token=None):
-        sdb = Factory.connect_sdb()
-        return sdb.select("ogre_books", "select authortitle, sdb_key, users, formats from ogre_books", next_token=next_token)
+        pass
+        #return sdb.select("ogre_books", "select authortitle, sdb_key, users, formats from ogre_books", next_token=next_token)
 
     def search(self, s):
-        sdb = Factory.connect_sdb()
-        return sdb.select("ogre_books", "select authortitle, sdb_key, users, formats from ogre_books where searchtext like '%%%s%%'" % s)
+        pass
+        #return sdb.select("ogre_books", "select authortitle, sdb_key, users, formats from ogre_books where searchtext like '%%%s%%'" % s)
 
     def update_library(self, ebooks):
         new_ebook_count = 0
@@ -36,7 +35,6 @@ class DataStore():
             if DataStore.check_ebook_exists(ebooks[authortitle]['filemd5']) == True:
                 found_duplicate = True
                 # TODO any way we can import meta data from this book?
-                break
 
             if found_duplicate == True:
                 print "ignoring exact duplicate %s" % authortitle
@@ -48,24 +46,23 @@ class DataStore():
 
             if b is None:
                 # create this as a new book
-                ebook = {
+                ebook_data = {
                     'authortitle': authortitle,
                     'formats': ebooks[authortitle]['format'],
                     'versions': {},
                 }
                 # add the first version
-                ebook['versions']['1'] = self.create_ebook_version_object(1,
+                ebook_data['versions']['1'] = self.create_ebook_version_object(1,
                     ebooks[authortitle]['size'],
                     ebooks[authortitle]['format'],
                     ebooks[authortitle]['filemd5']
                 )
                 new_ebook_count += 1
 
-                self.create_ebook(ebook, self.user.username, ebooks[authortitle]['filemd5'])
+                self.create_ebook(ebook_data, self.user.username, ebooks[authortitle]['filemd5'])
             else:
                 # parse the ebook data
                 ebook_data = json.loads(b['data'])
-                print json.dumps(ebook_data, indent=4)
 
                 # reject if this user has uploaded another version of this book before
                 for version_id in ebook_data['versions']:
@@ -88,7 +85,7 @@ class DataStore():
                     ebooks[authortitle]['format'],
                     ebooks[authortitle]['filemd5']
                 )
-                print ebook_data
+                print json.dumps(ebook_data, indent=2)
 
                 new_ebook_count += 1
 
@@ -150,14 +147,14 @@ class DataStore():
 
     @staticmethod
     def get_version_count(sdb_key):
-        sdb = Factory.connect_sdb()
-        rs = sdb.select("ogre_ebooks", "select itemName() from ogre_ebooks where itemName() = '%s'" % sdb_key)
+        sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
+        rs = sdb.select("ogre_ebooks", "select itemName() from ogre_ebooks where itemName() = '{0}'".format(sdb_key))
         return len(rs)
 
     @staticmethod
     def check_ebook_exists(filemd5):
-        sdb = Factory.connect_sdb()
-        rs = sdb.select("ogre_ebooks", "select itemName() from ogre_ebooks where hashes = '%s'" % filemd5)
+        sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
+        rs = sdb.select("ogre_ebooks", "select itemName() from ogre_ebooks where hashes = '{0}'".format(filemd5))
         return (len(rs) > 0)
 
     @staticmethod
@@ -208,8 +205,11 @@ class DataStore():
     @staticmethod
     def store_ebook(sdb_key, filemd5, filename, filepath, version, fmt):
         # connect to S3
-        bucket = Factory.connect_s3()
-        k = Factory.get_key(bucket)
+        s3 = boto.connect_s3(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
+        bucket = s3.get_bucket(app.config['S3_BUCKET'])
+
+        # create a new storage key
+        k = boto.s3.key.Key(bucket)
         k.key = filename
 
         # calculate uploaded file md5
@@ -225,19 +225,22 @@ class DataStore():
             try:
                 # TODO time this and print
                 # push file to S3
+                # TODO test public-read and generate_url access methods...
                 k.set_contents_from_filename(filepath, {'x-amz-meta-ogre-key': sdb_key}, False, None, 10, 'public-read', md5_tup)
 
-                # mark ebook as saved
+                # mark ebook as stored
                 DataStore.set_uploaded(sdb_key, version, fmt)
 
             except S3ResponseError:
                 # TODO log
                 raise S3DatastoreError("Upload failed checksum 2")
 
+        return True
+
     @staticmethod
     def generate_filename(authortitle, filemd5, fmt):
         # TODO transpose unicode
-        return "%s.%s.%s" % (re.sub("[^a-zA-Z0-9]", "_", authortitle), filemd5[0:6], fmt)
+        return "{0}.{1}.{2}".format(re.sub("[^a-zA-Z0-9]", "_", authortitle), filemd5[0:6], fmt)
 
     @staticmethod
     def get_missing_books(username=None, verify_s3=False):
@@ -271,11 +274,14 @@ class DataStore():
                     })
 
         if verify_s3 == True:
+            # connect to S3
+            s3 = boto.connect_s3(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
+            bucket = s3.get_bucket(app.config['S3_BUCKET'])
+
             # verify books are on S3
-            bucket = Factory.connect_s3()
             for b in output:
                 filename = DataStore.generate_filename(b['authortitle'], b['filemd5'], b['format'])
-                k = Factory.get_key(bucket, filename)
+                k = boto.s3.key.Key(bucket, filename)
                 DataStore.set_uploaded(b['sdb_key'], b['version'], b['format'], k.exists())
                 # TODO update rs when verify=True
 

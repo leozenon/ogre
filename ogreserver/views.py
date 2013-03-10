@@ -37,7 +37,10 @@ def login():
 
 @app.route("/auth", methods=['POST'])
 def auth():
-    user = User.authenticate(username=request.form.get("username"), password=request.form.get("password"))
+    user = User.authenticate(
+        username=request.form.get("username"),
+        password=request.form.get("password")
+    )
     if user == None:
         raise Forbidden
     else:

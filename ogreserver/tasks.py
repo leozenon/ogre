@@ -1,7 +1,9 @@
 import os
+import json
 import subprocess
 
-from ogreserver import app, celery
+from ogreserver import app
+from ogreserver.celery import celery
 
 from ogreserver.models.user import User
 from ogreserver.models.datastore import DataStore, S3DatastoreError
@@ -15,7 +17,7 @@ def store_ebook(user_id, sdb_key, authortitle, filemd5, version, fmt):
     Store an ebook in the datastore
     """
     try:
-        filepath = "%s/%s.%s" % (app.config['UPLOADED_EBOOKS_DEST'], filemd5, fmt)
+        filepath = "{0}/{1}.{2}".format(app.config['UPLOADED_EBOOKS_DEST'], filemd5, fmt)
         filename = DataStore.generate_filename(authortitle, filemd5, fmt)
 
         # extract ebook meta
@@ -24,28 +26,37 @@ def store_ebook(user_id, sdb_key, authortitle, filemd5, version, fmt):
 
         user = User.query.get(user_id)
 
-        print "store_ebook: %s %s %s" % (filename, filemd5, user)
+        print "store_ebook: {0}".format(json.dumps({
+            'filename': filename,
+            'filemd5': filemd5,
+            'user': str(user),
+        }, indent=2))
 
         # store the file into S3
-        DataStore.store_ebook(sdb_key, filemd5, filename, filepath, version, fmt)
+        if DataStore.store_ebook(sdb_key, filemd5, filename, filepath, version, fmt):
 
-        # flag the book as having DRM removed
-        if "Tags                : DeDRM" in meta:
-            DataStore.set_dedrm_flag(sdb_key)
+            # flag the book as having DRM removed
+            if "Tags                : DeDRM" in meta:
+                DataStore.set_dedrm_flag(sdb_key)
 
-        # stats log the upload
-        Log.create(user.id, "STORED", 1)
+            # stats log the upload
+            Log.create(user.id, "STORED", 1)
 
-        # handle badge and reputation changes
-        r = Reputation(user)
-        r.earn_badges()
+            # handle badge and reputation changes
+            r = Reputation(user)
+            r.earn_badges()
 
-        # always delete local file
-        os.remove(filepath)
+        else:
+            print "File exists on S3"
 
     except S3DatastoreError:
         # TODO log this shit
         pass
+
+    finally:
+        # always delete local file
+        if os.path.exists(filepath):
+            os.remove(filepath)
 
 
 @celery.task(name="ogreserver.convert_ebook")
