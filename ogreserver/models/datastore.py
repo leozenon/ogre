@@ -212,6 +212,15 @@ class DataStore():
         k = boto.s3.key.Key(bucket)
         k.key = filename
 
+        # check if our file is already up on S3
+        if k.exists():
+            k = bucket.get_key(filename)
+            # TODO look for bug in get_metadata()
+            metadata = k._get_remote_metadata()
+            if 'x-amz-meta-ogre-key' in metadata and metadata['x-amz-meta-ogre-key'] == sdb_key:
+                DataStore.set_uploaded(sdb_key, version, fmt)
+                return False
+
         # calculate uploaded file md5
         f = open(filepath, "rb")
         md5_tup = k.compute_md5(f)
