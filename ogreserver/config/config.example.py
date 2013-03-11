@@ -1,5 +1,5 @@
 import os
-basedir = os.path.abspath(os.path.dirname(__file__))
+basedir = os.path.abspath(os.path.dirname(".."))
 
 # AWS config
 AWS_ACCESS_KEY = ""
@@ -11,10 +11,10 @@ DEBUG = True
 BETA = True
 
 # Flask-WTF
-SECRET_KEY = ""
+SECRET_KEY = "very-secret-ogre"
 
 # SQLAlchemy DB URI
-SQLALCHEMY_DATABASE_URI = ""
+SQLALCHEMY_DATABASE_URI = "mysql://user:pass@localhost/ogre"
 
 # Whoosh full-text search
 WHOOSH_BASE = os.path.join(basedir, "search.db")
