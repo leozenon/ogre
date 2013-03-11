@@ -32,6 +32,13 @@ def create_user(username, password, email):
 
 
 @manager.command
+def rebuild_index():
+    "Reindex the entire DB into Whoosh."
+    # TODO implement
+    pass
+
+
+@manager.command
 def kill():
     "Completely clear the SDB storage. USE WITH CAUTION!"
     import boto

@@ -1,3 +1,5 @@
+import os
+
 # import Flask library
 from flask import Flask
 #from werkzeug.contrib.fixers import ProxyFix
@@ -15,6 +17,22 @@ app.config.from_pyfile("config/flask.app.conf.py")
 
 # setup SQLAlchemy
 db = SQLAlchemy(app)
+
+# init Whoosh for full-text search
+from whoosh.index import create_in, open_dir
+from whoosh.fields import Schema, TEXT
+
+if os.path.exists(app.config['WHOOSH_BASE']):
+    whoosh = open_dir(app.config['WHOOSH_BASE'])
+else:
+    os.makedirs(app.config['WHOOSH_BASE'])
+    schema = Schema(
+        sdb_key=TEXT(stored=True),
+        author=TEXT(stored=True),
+        title=TEXT(stored=True)
+    #    content=TEXT TODO extract and index all book content!
+    )
+    whoosh = create_in(app.config['WHOOSH_BASE'], schema)
 
 # memcache config
 #cache = Cache(app)

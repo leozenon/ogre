@@ -6,21 +6,15 @@ import re
 import boto
 from boto.exception import S3ResponseError
 
-from ogreserver import app
+from whoosh.qparser import MultifieldParser, OrGroup
+
+from ogreserver import app, whoosh
 
 
 class DataStore():
 
     def __init__(self, user):
         self.user = user
-
-    def list(self, next_token=None):
-        pass
-        #return sdb.select("ogre_books", "select authortitle, sdb_key, users, formats from ogre_books", next_token=next_token)
-
-    def search(self, s):
-        pass
-        #return sdb.select("ogre_books", "select authortitle, sdb_key, users, formats from ogre_books where searchtext like '%%%s%%'" % s)
 
     def update_library(self, ebooks):
         new_ebook_count = 0
@@ -138,12 +132,42 @@ class DataStore():
 
         obj['data'] = json.dumps(data)
         obj['users'] = creator
-        obj['searchtext'] = data['authortitle'].encode("UTF-8").lower()
         obj['hashes'] = hashes
         obj['all_uploaded'] = "false"
         obj['sdb_key'] = key
         obj.save()
+
+        # add info about this book to the search index
+        parts = data['authortitle'].split(" - ")
+        writer = whoosh.writer()
+        try:
+            writer.add_document(sdb_key=unicode(key), author=parts[0], title=parts[1])
+            writer.commit()
+        except Exception as e:
+            print e
+
         return key
+
+
+    def list(self):
+        return self.search("")
+
+    def search(self, searchstr):
+        """
+        Search for books using whoosh
+        """
+        output = []
+
+        qp = MultifieldParser(["author", "title"], whoosh.schema, group=OrGroup)
+        query = qp.parse(searchstr)
+
+        with whoosh.searcher() as s:
+            results = s.search(query)
+            for r in results:
+                output.append(r.fields())
+
+        return output
+
 
     @staticmethod
     def get_version_count(sdb_key):

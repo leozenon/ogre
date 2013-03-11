@@ -60,7 +60,7 @@ def home():
     return dedrm()
 
 
-@app.route("/list")
+@app.route("/list", methods=['GET', 'POST'])
 @login_required
 def list():
     ds = DataStore(current_user)
@@ -69,18 +69,8 @@ def list():
         rs = ds.list()
     else:
         rs = ds.search(s)
+
     return render_template("list.html", ebooks=rs)
-
-
-@app.route("/search", methods=['GET', 'POST'])
-@login_required
-def search():
-    form = SearchForm(request.args)
-
-    # TODO handle normal for post; feed list()
-    if request.method == "POST":
-        return list(form.s)
-    return render_template("search.html", form=form)
 
 
 @app.route("/view")
