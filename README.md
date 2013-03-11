@@ -18,8 +18,8 @@ Ogreserver Prerequisites
 * aptitude install supervisor
 
 
-Ogreserver Install
-------------------
+Ogreserver
+----------
 
 0. Create a directory for this project:
 
@@ -123,15 +123,6 @@ Hacking on OGRE involves just a little extra setup.
 
 ### Backend
 
-You can install `watchdog` to monitor the code for changes and send a HUP to gunicorn as necessary.
-
-In another shell session:
-
-```bash
-pip install watchdog
-watchmedo shell-command --patterns="*.py" --recursive --command="kill -HUP `cat /tmp/gunicorn-ogre.pid`" .
-```
-
 Replace step `4` above with the following two steps:
 
 1. Start gunicorn as a development server. You can modify the IP and port, then pass these to
@@ -146,6 +137,34 @@ Replace step `4` above with the following two steps:
     ```bash
     celery worker --app=ogreserver
     ```
+
+## Debugging
+
+When debugging the server code running gunicorn, it's useful to enter the debugger inline with `pdb`.
+Drop this into your code:
+
+```python
+import pdb; pdb.set_trace()
+```
+
+In order to do this, you will need to start gunicorn in worker `sync` mode, to prevent our connection 
+timing out whilst we are in the debugger. It's also pertinent to set a high worker timeout.
+
+```bash
+gunicorn ogreserver:app -c ogreserver/config/gunicorn.conf.py -b 127.0.0.1:8005 -k sync -t 300
+```
+
+# Polling for code changes
+
+You can install `watchdog` to monitor the code for changes and send a HUP to gunicorn as necessary.
+
+In another shell session:
+
+```bash
+pip install watchdog
+watchmedo shell-command --patterns="*.py" --recursive --command="kill -HUP `cat /tmp/gunicorn-ogre.pid`" .
+```
+
 
 ### Frontend
 
