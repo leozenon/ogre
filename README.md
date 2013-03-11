@@ -68,6 +68,47 @@ Ogreserver Install
     http://127.0.0.1:8005/ogre
     ```
 
+8. Now you'll want to synchronise some ebooks from Ogreclient.
+
+
+Ogreclient
+----------
+
+This command is the baseline for you to first synchronise ebooks to your new ogreserver:
+
+    ```bash
+    $ python ogreclient --ogreserver 127.0.0.1:8005 -u mafro -p password -H /home/mafro/ebooks
+    ```
+
+The help for that command should make things more clear:
+
+    ```bash
+    python ogreclient -h
+    usage: ogreclient [-h] [--ebook-home EBOOK_HOME] [--ogreserver OGRESERVER]
+                      [--username USERNAME] [--password PASSWORD] [--verbose]
+                      [--quiet] [--dry-run]
+
+    O.G.R.E. client application
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --ebook-home EBOOK_HOME, -H EBOOK_HOME
+                            The directory where you keep your ebooks. You can also
+                            set the environment variable $EBOOK_HOME
+      --ogreserver OGRESERVER
+                            Override the default server host of oii.ogre.me.uk
+      --username USERNAME, -u USERNAME
+                            Your O.G.R.E. username. You can also set the
+                            environment variable $EBOOK_USER
+      --password PASSWORD, -p PASSWORD
+                            Your O.G.R.E. password. You can also set the
+                            environment variable $EBOOK_PASS
+      --verbose, -v         Produce more output
+      --quiet, -q           Don't produce any output
+      --dry-run, -d         Dry run the sync; don't actually upload anything to
+                            the server
+    ```
+
 Troubleshooting
 ---------------
 

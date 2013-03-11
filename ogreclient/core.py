@@ -1,11 +1,9 @@
 from __future__ import division
 
-import getpass
 import json
 import os
 import subprocess
 import sys
-import tempfile
 
 import urllib
 import urllib2
@@ -14,59 +12,22 @@ from urllib2_file import newHTTPHandler
 
 from utils import compute_md5
 
+import config
+
 PROGBAR_LEN = 30
-OGRESERVER = "www.ogre.me.uk"
+OGRESERVER = "ogre.oii.me.uk"
 
 
-def doit(ebook_home=None, username=None, password=None):
-    # setup the environment
-    if ebook_home is None:
-        ebook_home = os.getenv("EBOOK_HOME")
-        if ebook_home is None or len(ebook_home) == 0:
-            print "You must set the $EBOOK_HOME environment variable"
-            sys.exit(1)
+def doit(ebook_home, username, password, ogreserver=None):
+    if ogreserver is not None:
+        OGRESERVER = ogreserver
 
-    if username is None:
-        username = os.getenv("EBOOK_USER")
-        if username is None or len(username) == 0:
-            username = getpass.getuser()
-            if username is not None:
-                print "$EBOOK_USER is not set. Please enter your username, or press enter to use '%s':" % username
-                ri = raw_input()
-                if len(ri) > 0:
-                    username = ri
-
-        if username is None:
-            print "$EBOOK_USER is not set. Please enter your username, or press enter to exit:"
-            username = raw_input()
-            if len(username) == 0:
-                sys.exit(1)
-
-    if password is None:
-        password = os.getenv("EBOOK_PASS")
-        if password is None or len(password) == 0:
-            print "$EBOOK_PASS is not set. Please enter your password, or press enter to exit:"
-            password = getpass.getpass()
-            if len(password) == 0:
-                sys.exit(1)
-
-    # setup a temp path for DRM checks with ebook-convert
-    ebook_convert_path = "%s/egg.epub" % tempfile.gettempdir()
-
-    # setup some ebook cache file paths
-    config_dir = "%s/%s" % (os.environ.get('XDG_CONFIG_HOME', os.path.expanduser('~/.config')), "ogre")
-    ebook_cache_path = "%s/ebook_cache" % config_dir
-    ebook_cache_temp_path = "%s/ebook_cache.tmp" % config_dir
     ebook_cache = []
 
-    # create or load the user's database of previously scanned ebooks
-    if not os.path.exists(config_dir):
-        print "Please note that DRM scanning means the first run of ogreclient will be much slower than subsequent runs."
-        os.makedirs(config_dir)
-    else:
-        if os.path.exists(ebook_cache_path):
-            with open(ebook_cache_path, "r") as f:
-                ebook_cache = f.read().splitlines()
+    # load the user's database of previously scanned ebooks
+    if os.path.exists(config.ebook_cache_path):
+        with open(config.ebook_cache_path, "r") as f:
+            ebook_cache = f.read().splitlines()
 
     try:
         # authenticate the user; retrieve an api_key for subsequent requests
@@ -74,8 +35,8 @@ def doit(ebook_home=None, username=None, password=None):
             'username': username,
             'password': password
         })
-        print params
-        req = urllib2.Request(url='http://%s/auth' % OGRESERVER, data=params)
+        req = urllib2.Request(url='http://{0}/auth'.format(OGRESERVER), data=params)
+        print req.get_full_url()
         f = urllib2.urlopen(req)
         api_key = f.read()
 
@@ -108,11 +69,14 @@ def doit(ebook_home=None, username=None, password=None):
     ebooks_dict = {}
 
     # write good ebooks into the local ogre cache to skip DRM test next run
-    with open(ebook_cache_temp_path, "w") as f_ogre_cache:
+    with open(config.ebook_cache_temp_path, "w") as f_ogre_cache:
 
         # now parse all book meta data; building a complete dataset
         for item in ebooks:
-            meta = subprocess.check_output(['ebook-meta', item[0]], stderr=subprocess.STDOUT)
+            meta = subprocess.check_output(
+                [config.calibre_ebook_meta_bin, item[0]],
+                stderr=subprocess.STDOUT
+            )
 
             if meta.find("EPubException") > 0:
                 # remove any corrupt
@@ -194,9 +158,9 @@ def doit(ebook_home=None, username=None, password=None):
     print "\nFound %s ebooks" % len(ebooks_dict)
 
     # move the temp cache onto the real ogre cache
-    statinfo = os.stat(ebook_cache_temp_path)
+    statinfo = os.stat(config.ebook_cache_temp_path)
     if statinfo.st_size > 0:
-        os.rename(ebook_cache_temp_path, ebook_cache_path)
+        os.rename(config.ebook_cache_temp_path, config.ebook_cache_path)
 
     print "Come on sucker, lick my battery"
 
@@ -211,7 +175,12 @@ def doit(ebook_home=None, username=None, password=None):
             'ebooks': json.dumps(ebooks_dict),
             'total': total
         })
-        req = urllib2.Request(url='http://%s/post/%s' % (OGRESERVER, urllib.quote_plus(api_key)))
+        req = urllib2.Request(
+            url='http://{0}/post/{1}'.format(
+                OGRESERVER,
+                urllib.quote_plus(api_key)
+            )
+        )
         print req.get_full_url()
         req.add_data(params)
         resp = urllib2.urlopen(req)
