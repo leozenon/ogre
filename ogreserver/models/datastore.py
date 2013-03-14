@@ -179,12 +179,6 @@ class DataStore():
 
 
     @staticmethod
-    def get_version_count(sdb_key):
-        sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
-        rs = sdb.select("ogre_ebooks", "select itemName() from ogre_ebooks where itemName() = '{0}'".format(sdb_key))
-        return len(rs)
-
-    @staticmethod
     def check_ebook_exists(filemd5):
         sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
         rs = sdb.select("ogre_ebooks", "select itemName() from ogre_ebooks where hashes = '{0}'".format(filemd5))
