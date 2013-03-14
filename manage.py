@@ -42,9 +42,18 @@ def rebuild_index():
 def kill():
     "Completely clear the SDB storage. USE WITH CAUTION!"
     import boto
+    import os
+    import shutil
+    import subprocess
     sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
     sdb.delete_domain("ogre_ebooks")
     sdb.create_domain("ogre_ebooks")
+    if os.path.exists(app.config['WHOOSH_BASE']):
+        shutil.rmtree(app.config['WHOOSH_BASE'])
+    if os.path.exists("/tmp/gunicorn-ogre.pid"):
+        with open("/tmp/gunicorn-ogre.pid", "r") as f:
+            pid = f.read()
+        subprocess.call(['kill', '-HUP', pid.strip()])
     print "Killed"
 
 
