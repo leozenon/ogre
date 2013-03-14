@@ -21,6 +21,8 @@ class DataStore():
         sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
         domain = sdb.get_domain("ogre_ebooks")
 
+        lib_updated = False
+
         for authortitle in ebooks.keys():
             #try:
             # first check if this exact file has been uploaded before
@@ -54,6 +56,8 @@ class DataStore():
                 new_ebook_count += 1
 
                 self.create_ebook(ebook_data, self.user.username, ebooks[authortitle]['filemd5'])
+
+                lib_updated = True
             else:
                 # parse the ebook data
                 ebook_data = json.loads(b['data'])
@@ -100,9 +104,14 @@ class DataStore():
                 b['data'] = json.dumps(ebook_data)
                 b.save()
 
+                lib_updated = True
+
             #except Exception as e:
             #    print "[EXCP] %s" % authortitle
             #    print "\t%s: %s" % (type(e), e)
+
+        if lib_updated:
+            DataStore.update_library_timestamp()
 
         return new_ebook_count
 
@@ -321,7 +330,7 @@ class DataStore():
         return output
 
     @staticmethod
-    def update_timestamp():
+    def update_library_timestamp():
         sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
         domain = sdb.get_domain("ogre_ebooks")
 
