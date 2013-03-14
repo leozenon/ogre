@@ -1,7 +1,7 @@
 import base64
 import json
 
-from flask import request, redirect, session, url_for, render_template
+from flask import request, redirect, session, url_for, render_template, jsonify
 from flask.ext.login import login_required, login_user, logout_user, current_user
 
 from werkzeug.exceptions import Forbidden
@@ -9,7 +9,6 @@ from werkzeug.exceptions import Forbidden
 from ogreserver import app, uploads
 
 from ogreserver.forms.auth import LoginForm
-from ogreserver.forms.search import SearchForm
 
 from ogreserver.models.user import User
 from ogreserver.models.datastore import DataStore
@@ -69,8 +68,21 @@ def list():
         rs = ds.list()
     else:
         rs = ds.search(s)
-
     return render_template("list.html", ebooks=rs)
+
+
+@app.route("/ajax/rating/<sdb_key>")
+@login_required
+def get_rating(sdb_key):
+    rating = DataStore.get_rating(sdb_key)
+    return jsonify({'rating': rating})
+
+
+@app.route("/ajax/comment-count/<sdb_key>")
+@login_required
+def get_comment_count(sdb_key):
+    comments = DataStore.get_comments(sdb_key)
+    return jsonify({'comments': len(comments)})
 
 
 @app.route("/view")

@@ -46,6 +46,8 @@ class DataStore():
                     'authortitle': authortitle,
                     'formats': ebooks[authortitle]['format'],
                     'versions': {},
+                    'rating': None,
+                    'comments': None,
                 }
                 # add the first version
                 ebook_data['versions']['1'] = self.create_ebook_version_object(1,
@@ -122,7 +124,6 @@ class DataStore():
             'size': size,
             'popularity': 1,
             'quality': 0.5,
-            'rating': None,
             'original_format': fmt,
             'formats': {
                 fmt: {
@@ -185,46 +186,51 @@ class DataStore():
         return (len(rs) > 0)
 
     @staticmethod
+    def _get_single_ebook(sdb_key, for_update=False):
+        sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
+        domain = sdb.get_domain("ogre_ebooks")
+        b = domain.get_item(sdb_key)
+        if b is None:
+            raise Exception("Unknown key %s" % sdb_key)
+        if for_update:
+            return json.loads(b['data']), b
+        else:
+            return json.loads(b['data'])
+
+    @staticmethod
+    def get_rating(sdb_key):
+        return DataStore._get_single_ebook(sdb_key)['rating']
+
+    @staticmethod
+    def get_comments(sdb_key):
+        comments = DataStore._get_single_ebook(sdb_key)['comments']
+        if comments is None:
+            return []
+        else:
+            return comments
+
+    @staticmethod
     def build_ebook_key(authortitle):
         return hashlib.md5((authortitle).encode("UTF-8")).hexdigest()
 
     @staticmethod
     def get_ebook_url(sdb_key, fmt):
-        sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
-        domain = sdb.get_domain("ogre_ebooks")
-        b = domain.get_item(sdb_key)
-        if b is None:
-            raise Exception("Unknown key %s" % sdb_key)
-
-        ebook_data = json.loads(b['data'])
+        ebook_data = DataStore._get_single_ebook(sdb_key)
         return DataStore.generate_filename(ebook_data['authortitle'], ebook_data['formats'][fmt]['filemd5'], fmt)
 
     @staticmethod
     def set_uploaded(sdb_key, version, fmt, isit=True):
-        sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
-        domain = sdb.get_domain("ogre_ebooks")
-        b = domain.get_item(sdb_key)
-        if b is None:
-            raise Exception("Unknown key %s" % sdb_key)
-
-        ebook_data = json.loads(b['data'])
+        ebook_data, b = DataStore._get_single_ebook(sdb_key, for_update=True)
         if isit == False:
             ebook_data['versions'][version]['formats'][fmt]['uploaded'] = False
         else:
             ebook_data['versions'][version]['formats'][fmt]['uploaded'] = True
-
         b['data'] = json.dumps(ebook_data)
         b.save()
 
     @staticmethod
     def set_dedrm_flag(sdb_key, fmt):
-        sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
-        domain = sdb.get_domain("ogre_ebooks")
-        b = domain.get_item(sdb_key)
-        if b is None:
-            raise Exception("Unknown key %s" % sdb_key)
-
-        ebook_data = json.loads(b['data'])
+        ebook_data, b = DataStore._get_single_ebook(sdb_key, for_update=True)
         ebook_data['formats']['fmt']['dedrm'] = None
         b['data'] = json.dumps(ebook_data)
         b.save()

@@ -58,7 +58,7 @@ body {
 /* -----------------------------------------
    Listing
 ----------------------------------------- */
-ul.ebooks, ul.users, ul.formats { list-style-type: none; margin-left: 0px; }
+ul#ebook-listing, ul.users, ul.formats { list-style-type: none; margin-left: 0px; }
 
 .odd { background-color: #aaa; color: #0A65C8; }
 .even { background-color: #ddd; color: #2A85E8; }
@@ -72,6 +72,8 @@ li.ebook span.info { float: right; line-height:20px; }
 ul.users li, ul.formats li { float: left; margin-bottom: 0px; font-size: 0.9em; }
 ul.users { float: right; margin-bottom: 0px; }
 ul.formats { float: left; margin-bottom: 0px; }
+
+.hidden { display: none; }
 
 
 /* -----------------------------------------

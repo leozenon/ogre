@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block body %}
 
-<ul class="ebooks">
+<ul id="ebook-listing">
 
 {% for b in ebooks %}
 
@@ -10,8 +10,8 @@
 		<div class="firstsection">
 			<a class="title" href="/view/{{b.sdb_key}}">{{b.author}} - {{b.title}}</a>
 			<span class="info">
-				<span class="rating">?</span>
-				<span class="comments">?</span>
+				<span class="rating hidden">{{b.sdb_key}}</span>
+				<span class="comments hidden">{{b.sdb_key}}</span>
 			</span>
 		</div>
 		<div class="secondsection">
