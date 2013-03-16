@@ -1,7 +1,11 @@
 #! /usr/bin/env python
 
 from __future__ import absolute_import
+
+import sys
+
 from flask.ext.script import Manager
+from sqlalchemy.exc import IntegrityError
 
 from ogreserver import app, db
 
@@ -28,7 +32,11 @@ def create_user(username, password, email):
     from ogreserver.models.user import User
     user = User(username, password, email)
     db.session.add(user)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        print "A user with this email address already exists"
+        sys.exit(1)
 
 
 @manager.command
