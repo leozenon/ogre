@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from flask.ext.login import UserMixin
+from sqlalchemy.sql import func
 
 from ogreserver import app, db
 from ogreserver.models import security
@@ -17,6 +18,7 @@ class User(db.Model, UserMixin):
     points = db.Column(db.Integer, default=0)
     needs_password_reset = db.Column(db.Boolean, default=1)
     badges = db.relationship(UserBadge, backref='user', lazy='dynamic')
+    total_users = None
 
     def __init__(self, username, password, email):
         self.username = username
@@ -76,6 +78,13 @@ class User(db.Model, UserMixin):
 
     def has_badge(self, badge):
         return Reputation.has_badge(self, badge)
+
+    @staticmethod
+    def get_total_users():
+        if User.total_users is None:
+            q = db.session.query(func.count(User.id))
+            User.total_users = db.session.execute(q).scalar()
+        return User.total_users
 
     def __str__(self):
         return "<User: %s, %s>" % (self.id, self.username)

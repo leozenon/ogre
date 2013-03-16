@@ -9,10 +9,10 @@ from boto.exception import S3ResponseError
 from whoosh.qparser import MultifieldParser, OrGroup
 
 from ogreserver import app, whoosh
+from ogreserver.models.user import User
 
 
 class DataStore():
-
     def __init__(self, user):
         self.user = user
 
@@ -95,8 +95,9 @@ class DataStore():
 
                 # TODO version popularity determines which formats appear on ebook base top-level
                 # popularity += 1 for download
-                # popularity += 5 for quality review
+                # popularity += 1 for new owner
                 # use quality as co-efficient when calculating most popular
+                # quality in 5 segments, (-0.5,-0.25,0,0.25,0.5)
 
                 # append to the set of this book's formats
                 if ebooks[authortitle]['format'] not in b['formats']:
@@ -123,7 +124,7 @@ class DataStore():
             'user': self.user.username,
             'size': size,
             'popularity': 1,
-            'quality': 0.5,
+            'quality': 0,
             'original_format': fmt,
             'formats': {
                 fmt: {
@@ -214,9 +215,62 @@ class DataStore():
         return hashlib.md5((authortitle).encode("UTF-8")).hexdigest()
 
     @staticmethod
-    def get_ebook_url(sdb_key, fmt):
+    def versions_rank_algorithm(v):
+        total_users = User.get_total_users()
+        return (v['quality'] * 0.7) + ((float(v['popularity']) / total_users) * 100 * 0.3)
+
+    @staticmethod
+    def get_ebook_url(sdb_key, fmt=None, version=None):
         ebook_data = DataStore._get_single_ebook(sdb_key)
-        return DataStore.generate_filename(ebook_data['authortitle'], ebook_data['formats'][fmt]['filemd5'], fmt)
+
+        if version is None:
+            # sort this book's versions by quality & popularity
+            versions = sorted(ebook_data['versions'].values(),
+                key=lambda v: DataStore.versions_rank_algorithm(v),
+                reverse=True
+            )
+
+            if fmt is None:
+                # serve the OGRE preferred format from top-ranked version (versions[0])
+                v = versions[0]
+                for ebook_fmt in app.config['EBOOK_FORMATS']:
+                    if ebook_fmt in v['formats']:
+                        fmt = ebook_fmt
+                        break
+            else:
+                # serve the requested format from best version possible
+                for v in versions:
+                    if fmt in v['formats'].keys():
+                        break
+        else:
+            # get the specific requested version
+            v = ebook_data['versions'][version]
+
+            if fmt is None:
+                # serve the OGRE preferred format from top-ranked version (versions[0])
+                for ebook_fmt in app.config['EBOOK_FORMATS']:
+                    if ebook_fmt in v['formats']:
+                        fmt = ebook_fmt
+                        break
+            else:
+                # verify requested format is available on requested version
+                try:
+                    v['formats'][fmt]['filemd5'],
+                except KeyError:
+                    raise Exception("Requested format not available on requested version.")
+
+        # generate the filename - which is the key on S3
+        filename = DataStore.generate_filename(
+            ebook_data['authortitle'],
+            v['formats'][fmt]['filemd5'],
+            fmt
+        )
+
+        s3 = boto.connect_s3(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
+        return s3.generate_url(app.config['DOWNLOAD_LINK_EXPIRY'], 'GET',
+            bucket=app.config['S3_BUCKET'],
+            key=filename
+        )
 
     @staticmethod
     def set_uploaded(sdb_key, version, fmt, isit=True):
@@ -267,8 +321,10 @@ class DataStore():
             try:
                 # TODO time this and print
                 # push file to S3
-                # TODO test public-read and generate_url access methods...
-                k.set_contents_from_filename(filepath, {'x-amz-meta-ogre-key': sdb_key}, False, None, 10, 'public-read', md5_tup)
+                k.set_contents_from_filename(filepath,
+                    headers={'x-amz-meta-ogre-key': sdb_key},
+                    md5=md5_tup,
+                )
 
                 # mark ebook as stored
                 DataStore.set_uploaded(sdb_key, version, fmt)

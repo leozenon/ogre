@@ -93,10 +93,11 @@ def view(sdbkey=None):
     return render_template("view.html", ebooks=rs)
 
 
+@app.route('/download/<sdb_key>/', defaults={'fmt': None})
 @app.route("/download/<sdb_key>/<fmt>")
 @login_required
-def download(sdb_key, fmt):
-    return DataStore.get_ebook_url(sdb_key, fmt)
+def download(sdb_key, fmt=None):
+    return redirect(DataStore.get_ebook_url(sdb_key, fmt))
 
 
 @app.route("/dedrm")

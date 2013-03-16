@@ -23,4 +23,7 @@ WHOOSH_BASE = os.path.join(basedir, "search.db")
 UPLOADED_EBOOKS_DEST = ""
 
 # Ebook conversion formats; all books will be provided in these formats by OGRE
-EBOOK_FORMATS = ['epub', 'mobi']
+EBOOK_FORMATS = ['mobi', 'azw', 'pdf', 'epub']
+
+# OGRE download links expire in 10 seconds
+DOWNLOAD_LINK_EXPIRY = 10
