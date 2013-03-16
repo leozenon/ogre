@@ -2,21 +2,20 @@ import os
 
 # import Flask library
 from flask import Flask
-#from werkzeug.contrib.fixers import ProxyFix
 
 # import Flask extensions
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask.ext.login import LoginManager
 from flask.ext.uploads import UploadSet, ALL, configure_uploads
-#from flask.ext.script import Manager
-#from flask.ext.cache import Cache
 
 # instantiate Flask application
 app = Flask(__name__)
 app.config.from_pyfile("config/flask.app.conf.py")
 
+
 # setup SQLAlchemy
 db = SQLAlchemy(app)
+
 
 # init Whoosh for full-text search
 from whoosh.index import create_in, open_dir
@@ -34,8 +33,6 @@ else:
     )
     whoosh = create_in(app.config['WHOOSH_BASE'], schema)
 
-# memcache config
-#cache = Cache(app)
 
 # setup Flask-Login
 login_manager = LoginManager()
