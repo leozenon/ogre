@@ -17,6 +17,11 @@ class DataStore():
         self.user = user
 
     def update_library(self, ebooks):
+        """
+        The core library synchronisation method.
+        An array of ebook metadata and file hashes is supplied by each client and synchronised
+        against the contents of the Amazon SDB database.
+        """
         new_ebook_count = 0
         sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
         domain = sdb.get_domain("ogre_ebooks")
@@ -119,6 +124,9 @@ class DataStore():
         return new_ebook_count
 
     def create_ebook_version_object(self, num, size, fmt, filemd5):
+        """
+        Create an object to represent a single version of an ebook
+        """
         return {
             'version': num,
             'user': self.user.username,
@@ -135,6 +143,10 @@ class DataStore():
         }
 
     def create_ebook(self, data, creator, hashes):
+        """
+        Create and store a new ebook entry with it's version info encoded as a json
+        object in the 'data' param.
+        """
         sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
         domain = sdb.get_domain("ogre_ebooks")
 
@@ -182,12 +194,20 @@ class DataStore():
 
     @staticmethod
     def check_ebook_exists(filemd5):
+        """
+        Check if this specific version's hash exists in any known ebook
+        """
         sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
         rs = sdb.select("ogre_ebooks", "select itemName() from ogre_ebooks where hashes = '{0}'".format(filemd5))
         return (len(rs) > 0)
 
     @staticmethod
     def _get_single_ebook(sdb_key, for_update=False):
+        """
+        Retrieve an ebook from Amazon SDB.
+        The for_update parameter alter the return to be a tuple containing the boto
+        object which allows you to update and save the ebook
+        """
         sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
         domain = sdb.get_domain("ogre_ebooks")
         b = domain.get_item(sdb_key)
@@ -200,10 +220,16 @@ class DataStore():
 
     @staticmethod
     def get_rating(sdb_key):
+        """
+        Get the user rating for this book
+        """
         return DataStore._get_single_ebook(sdb_key)['rating']
 
     @staticmethod
     def get_comments(sdb_key):
+        """
+        Get the list of comments on this book
+        """
         comments = DataStore._get_single_ebook(sdb_key)['comments']
         if comments is None:
             return []
@@ -212,15 +238,32 @@ class DataStore():
 
     @staticmethod
     def build_ebook_key(authortitle):
+        """
+        Generate a key for this ebook from the author and title
+        This is used as the ebook's key in Amazon SDB - referred to as sdb_key in code
+        """
         return hashlib.md5((authortitle).encode("UTF-8")).hexdigest()
 
     @staticmethod
-    def versions_rank_algorithm(v):
+    def versions_rank_algorithm(version):
+        """
+        Generate a score for this version of an ebook
+
+        The quality % score and the popularity score are ratioed together 70:30
+        Since popularity is a scalar and can grow indefinitely it's divided
+        by our num of total system users
+        """
         total_users = User.get_total_users()
-        return (v['quality'] * 0.7) + ((float(v['popularity']) / total_users) * 100 * 0.3)
+        return (version['quality'] * 0.7) + ((float(version['popularity']) / total_users) * 100 * 0.3)
 
     @staticmethod
     def get_ebook_url(sdb_key, fmt=None, version=None):
+        """
+        Generate a download URL for the requested ebook
+
+        If a version isn't requested the top-ranked one will be supplied.
+        If a format isn't requested one will be served in the order defined in EBOOK_FORMATS
+        """
         ebook_data = DataStore._get_single_ebook(sdb_key)
 
         if version is None:
@@ -274,6 +317,9 @@ class DataStore():
 
     @staticmethod
     def set_uploaded(sdb_key, version, fmt, isit=True):
+        """
+        Mark an ebook as having been uploaded to S3
+        """
         ebook_data, b = DataStore._get_single_ebook(sdb_key, for_update=True)
         if isit == False:
             ebook_data['versions'][version]['formats'][fmt]['uploaded'] = False
@@ -284,6 +330,9 @@ class DataStore():
 
     @staticmethod
     def set_dedrm_flag(sdb_key, fmt):
+        """
+        Mark a book as having had DRM removed
+        """
         ebook_data, b = DataStore._get_single_ebook(sdb_key, for_update=True)
         ebook_data['formats']['fmt']['dedrm'] = None
         b['data'] = json.dumps(ebook_data)
@@ -291,7 +340,9 @@ class DataStore():
 
     @staticmethod
     def store_ebook(sdb_key, filemd5, filename, filepath, version, fmt):
-        # connect to S3
+        """
+        Store an ebook on S3
+        """
         s3 = boto.connect_s3(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
         bucket = s3.get_bucket(app.config['S3_BUCKET'])
 
@@ -337,11 +388,20 @@ class DataStore():
 
     @staticmethod
     def generate_filename(authortitle, filemd5, fmt):
+        """
+        Generate the filename for a book on its way to S3
+        """
         # TODO transpose unicode
         return "{0}.{1}.{2}".format(re.sub("[^a-zA-Z0-9]", "_", authortitle), filemd5[0:6], fmt)
 
     @staticmethod
     def get_missing_books(username=None, verify_s3=False):
+        """
+        Query Amazon SDB for books marked as not uploaded
+
+        The verify_s3 flag enables a further check to be run against S3 to ensure 
+        the file is actually there
+        """
         sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
 
         if username is not None:
@@ -387,6 +447,9 @@ class DataStore():
 
     @staticmethod
     def update_library_timestamp():
+        """
+        Tag the Amazon SDB bucket with timestamp meta data
+        """
         sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
         domain = sdb.get_domain("ogre_ebooks")
 

@@ -27,6 +27,9 @@ class User(db.Model, UserMixin):
 
     @staticmethod
     def authenticate(username, password):
+        """
+        Authenticate a user by username and password
+        """
         user = User.query.filter_by(username=username).first()
         if not user:
             return None
@@ -36,16 +39,20 @@ class User(db.Model, UserMixin):
 
     @staticmethod
     def _compile_pre_key(username, password, timestamp):
-        # construct a unique identifier to be hashed
         return "%s:%s:%s:%s" % (app.config['SECRET_KEY'], username, password, timestamp)
 
     @staticmethod
     def create_auth_key(username, password, timestamp):
-        # hash the value from _compile_pre_key()
+        """
+        Construct a unique identifier for an API key by encrypting output from _compile_pre_key()
+        """
         return security.pwd_context.encrypt(User._compile_pre_key(username, password, timestamp))
 
     @staticmethod
     def validate_auth_key(username, api_key):
+        """
+        Validate an incoming API key
+        """
         # load the user by name
         user = User.query.filter_by(username=username).first()
         if not user:
@@ -61,7 +68,9 @@ class User(db.Model, UserMixin):
             return None
 
     def assign_auth_key(self):
-        # generate a new API key and save against the user
+        """
+        Generate a new API key and save against the user
+        """
         self.api_key_expires = datetime.utcnow()
         self.api_key_expires = self.api_key_expires.replace(microsecond=0)    # remove microseconds for mysql
         api_key = User.create_auth_key(self.username, self.password, self.api_key_expires)
@@ -71,16 +80,25 @@ class User(db.Model, UserMixin):
 
     # Flask-Login method
     def is_authenticated(self):
+        """
+        Check user is authenticated
+        """
         if self.email is not None:
             return True
         else:
             return False
 
     def has_badge(self, badge):
+        """
+        Check if this user has earnt a specific badge
+        """
         return Reputation.has_badge(self, badge)
 
     @staticmethod
     def get_total_users():
+        """
+        Return the total number of registered users
+        """
         if User.total_users is None:
             q = db.session.query(func.count(User.id))
             User.total_users = db.session.execute(q).scalar()

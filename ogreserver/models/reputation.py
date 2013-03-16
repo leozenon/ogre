@@ -1,8 +1,6 @@
 from ogreserver import app, db
-
 from ogreserver.models.log import Log
 
-from sqlalchemy import exc
 from sqlalchemy.sql import func
 
 
@@ -16,11 +14,17 @@ class Reputation():
         self.user = user
 
     def new_ebooks(self, count):
+        """
+        Each new book uploaded earns a user a point
+        """
         self.user.points += count
         db.session.add(self.user)
         db.session.commit()
 
     def get_new_badges(self):
+        """
+        Retrieve badges this user hasn't been alerted about
+        """
         new_badges = UserBadge.query.filter_by(user_id=self.user.id, been_alerted=False)
         msgs = []
 
@@ -31,6 +35,9 @@ class Reputation():
         return msgs
 
     def earn_badges(self):
+        """
+        Check if a user has earned any badges on this synchronisation
+        """
         if self.user.has_badge(Badges.Beta_Tester) == False:
             if app.config['BETA'] == True:
                 self.award(Badges.Beta_Tester)
@@ -54,17 +61,22 @@ class Reputation():
                 self.award(Badges.Pirate)
 
     def award(self, badge):
+        """
+        Award a badge to a user in the DB
+        """
         ub = UserBadge(user_id=self.user.id, badge=badge)
         db.session.add(ub)
         db.session.commit()
 
     @staticmethod
     def has_badge(user, badge):
+        """
+        Check if a user has a certain badge
+        """
         for b in user.badges:
             if b.badge == badge:
                 return True
         return False
-
 
 
 class UserBadge(db.Model):
@@ -88,6 +100,9 @@ class UserBadge(db.Model):
             return "You earned the 'Pirate' badge. First DRM cleansed upload."
 
     def set_alerted(self):
+        """
+        Flag that the has been alerted about earning this badge
+        """
         self.been_alerted = True
         db.session.add(self)
         db.session.commit()
