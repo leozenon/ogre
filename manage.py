@@ -2,6 +2,7 @@
 
 from __future__ import absolute_import
 
+import os
 import sys
 
 from flask.ext.script import Manager
@@ -10,6 +11,11 @@ from sqlalchemy.exc import IntegrityError
 from ogreserver import app, db
 
 manager = Manager(app)
+
+# include the sesame manager
+from sesame.flask.script import manager as sesame_manager
+manager.add_command("sesame", sesame_manager)
+
 
 @manager.command
 def verify_s3():
@@ -50,7 +56,6 @@ def rebuild_index():
 def kill():
     "Completely clear the SDB storage. USE WITH CAUTION!"
     import boto.sdb
-    import os
     import shutil
     import subprocess
     sdb = boto.sdb.connect_to_region(app.config['AWS_REGION'],
