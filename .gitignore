@@ -1,6 +1,7 @@
 .DS_Store
 *.pyc
-flask.app.conf.py
+flask.*.conf.py
+!flask.*.conf.py.encrypted
 OGRE_DRM_Tools*.zip
 search.db
 .sass-cache
