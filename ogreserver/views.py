@@ -18,6 +18,10 @@ from ogreserver.models.log import Log
 from ogreserver.tasks import store_ebook
 
 
+def noop():
+    pass
+
+
 @app.route("/")
 @login_required
 def index():

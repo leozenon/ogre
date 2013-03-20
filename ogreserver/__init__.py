@@ -12,10 +12,12 @@ from flask.ext.uploads import UploadSet, ALL, configure_uploads
 app = Flask(__name__)
 app.config.from_pyfile("config/flask.app.conf.py")
 
+
 # declare some error handler pages
 @app.errorhandler(404)
 def page_not_found(error):
     return render_template("404.html"), 404
+
 
 @app.errorhandler(500)
 def internal_error(error):
@@ -49,6 +51,7 @@ login_manager = LoginManager()
 login_manager.setup_app(app)
 login_manager.login_view = "login"
 
+
 @login_manager.user_loader
 def load_user(userid):
     from ogreserver.models.user import User
@@ -61,4 +64,5 @@ uploads = UploadSet('ebooks', ALL)
 configure_uploads(app, (uploads))
 
 # import views to register them with Flask
-import ogreserver.views
+import views
+views.noop()
