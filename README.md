@@ -43,6 +43,9 @@ Ogreserver
     pip install -r config/requirements.txt
     ```
 
+    On OSX you might get an error when compiling `gevent`. In order to fix this install Xcode 4.4+
+	and install the command line tools http://stackoverflow.com/q/11716107/425050.
+
 3. Create the auth DB:
 
     ```bash
