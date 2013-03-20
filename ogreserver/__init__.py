@@ -10,7 +10,10 @@ from flask.ext.uploads import UploadSet, ALL, configure_uploads
 
 # instantiate Flask application
 app = Flask(__name__)
-app.config.from_pyfile("config/flask.app.conf.py")
+try:
+    app.config.from_pyfile("config/flask.app.conf.py")
+except IOError:
+    raise Exception("Missing application config! Do you need to decrypt it?")
 
 # setup SQLAlchemy
 db = SQLAlchemy(app)
@@ -29,7 +32,6 @@ if app.config['SECRET_KEY'] is not None:
         db.session.rollback()
         return render_template("500.html"), 500
 
-
     # init Whoosh for full-text search
     from whoosh.index import create_in, open_dir
     from whoosh.fields import Schema, TEXT
@@ -46,7 +48,6 @@ if app.config['SECRET_KEY'] is not None:
         )
         whoosh = create_in(app.config['WHOOSH_BASE'], schema)
 
-
     # setup Flask-Login
     login_manager = LoginManager()
     login_manager.setup_app(app)
@@ -57,7 +58,6 @@ if app.config['SECRET_KEY'] is not None:
         from ogreserver.models.user import User
         user = User.query.filter_by(id=int(userid)).first()
         return user
-
 
     # setup Flask-Upload
     uploads = UploadSet('ebooks', ALL)
