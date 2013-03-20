@@ -2,13 +2,13 @@ import os
 import json
 import subprocess
 
-from ogreserver import app
-from ogreserver.celery import celery
+from . import app
+from celery import celery
 
-from ogreserver.models.user import User
-from ogreserver.models.datastore import DataStore, S3DatastoreError
-from ogreserver.models.reputation import Reputation
-from ogreserver.models.log import Log
+from models.user import User
+from models.datastore import DataStore, S3DatastoreError
+from models.reputation import Reputation
+from models.log import Log
 
 
 @celery.task(name="ogreserver.store_ebook")
@@ -21,7 +21,7 @@ def store_ebook(user_id, sdb_key, authortitle, filemd5, version, fmt):
         filename = DataStore.generate_filename(authortitle, filemd5, fmt)
 
         # extract ebook meta
-        meta = subprocess.Popen(['ebook-meta', filepath], 
+        meta = subprocess.Popen(['ebook-meta', filepath],
                                 stdout=subprocess.PIPE).communicate()[0]
 
         user = User.query.get(user_id)

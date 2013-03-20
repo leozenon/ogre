@@ -1,5 +1,5 @@
-from ogreserver import app, db
-from ogreserver.models.log import Log
+from .. import app, db
+from log import Log
 
 from sqlalchemy.sql import func
 

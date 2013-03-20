@@ -9,8 +9,8 @@ from boto.exception import S3ResponseError
 
 from whoosh.qparser import MultifieldParser, OrGroup
 
-from ogreserver import app, whoosh
-from ogreserver.models.user import User
+from .. import app, whoosh
+from user import User
 
 
 class DataStore():
@@ -20,8 +20,8 @@ class DataStore():
     def update_library(self, ebooks):
         """
         The core library synchronisation method.
-        An array of ebook metadata and file hashes is supplied by each client and synchronised
-        against the contents of the Amazon SDB database.
+        An array of ebook metadata and file hashes is supplied by each client
+        and synchronised against the contents of the Amazon SDB database.
         """
         new_ebook_count = 0
         sdb = boto.sdb.connect_to_region(app.config['AWS_REGION'],

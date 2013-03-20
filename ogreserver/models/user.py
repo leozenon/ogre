@@ -3,9 +3,9 @@ from datetime import datetime
 from flask.ext.login import UserMixin
 from sqlalchemy.sql import func
 
-from ogreserver import app, db
-from ogreserver.models import security
-from ogreserver.models.reputation import Reputation, UserBadge
+from .. import app, db
+from security import pwd_context
+from reputation import Reputation, UserBadge
 
 
 class User(db.Model, UserMixin):
@@ -22,7 +22,7 @@ class User(db.Model, UserMixin):
 
     def __init__(self, username, password, email):
         self.username = username
-        self.password = security.pwd_context.encrypt(password)
+        self.password = pwd_context.encrypt(password)
         self.email = email
 
     @staticmethod
@@ -33,7 +33,7 @@ class User(db.Model, UserMixin):
         user = User.query.filter_by(username=username).first()
         if not user:
             return None
-        elif security.pwd_context.verify(password, user.password) == False:
+        elif pwd_context.verify(password, user.password) == False:
             return None
         return user
 
@@ -46,7 +46,7 @@ class User(db.Model, UserMixin):
         """
         Construct a unique identifier for an API key by encrypting output from _compile_pre_key()
         """
-        return security.pwd_context.encrypt(User._compile_pre_key(username, password, timestamp))
+        return pwd_context.encrypt(User._compile_pre_key(username, password, timestamp))
 
     @staticmethod
     def validate_auth_key(username, api_key):
@@ -62,7 +62,7 @@ class User(db.Model, UserMixin):
 
         # reconstruct the key and verify it
         prekey = User._compile_pre_key(user.username, user.password, user.api_key_expires)
-        if security.pwd_context.verify(prekey, api_key) == True:
+        if pwd_context.verify(prekey, api_key) == True:
             return user
         else:
             return None

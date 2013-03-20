@@ -6,16 +6,16 @@ from flask.ext.login import login_required, login_user, logout_user, current_use
 
 from werkzeug.exceptions import Forbidden
 
-from ogreserver import app, uploads
+from . import app, uploads
 
-from ogreserver.forms.auth import LoginForm
+from forms.auth import LoginForm
 
-from ogreserver.models.user import User
-from ogreserver.models.datastore import DataStore
-from ogreserver.models.reputation import Reputation
-from ogreserver.models.log import Log
+from models.user import User
+from models.datastore import DataStore
+from models.reputation import Reputation
+from models.log import Log
 
-from ogreserver.tasks import store_ebook
+from tasks import store_ebook
 
 
 def noop():

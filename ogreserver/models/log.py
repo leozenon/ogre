@@ -1,4 +1,4 @@
-from ogreserver import app, db
+from .. import db
 
 from datetime import datetime
 
@@ -23,4 +23,3 @@ class Log(db.Model):
         print "%s %s" % (type, data)
         db.session.add(Log(user_id, api_session_key, type, data))
         db.session.commit()
-

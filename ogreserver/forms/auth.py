@@ -1,6 +1,6 @@
 from flask.ext.wtf import Form, TextField, PasswordField, validators
 
-from ogreserver.models.user import User
+from ..models.user import User
 
 
 class LoginForm(Form):
