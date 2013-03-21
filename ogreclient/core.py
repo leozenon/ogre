@@ -12,21 +12,23 @@ from urllib2_file import newHTTPHandler
 
 from utils import compute_md5
 
-import config
-
 PROGBAR_LEN = 30
 OGRESERVER = "ogre.oii.me.uk"
 
 
-def doit(ebook_home, username, password, ogreserver=None):
+def doit(ebook_home, username, password,
+         ogreserver=None, config_dir=None, ebook_cache_path=None,
+         ebook_cache_temp_path=None, ebook_convert_path=None,
+         calibre_ebook_meta_bin=None):
+
     if ogreserver is not None:
         OGRESERVER = ogreserver
 
     ebook_cache = []
 
     # load the user's database of previously scanned ebooks
-    if os.path.exists(config.ebook_cache_path):
-        with open(config.ebook_cache_path, "r") as f:
+    if os.path.exists(ebook_cache_path):
+        with open(ebook_cache_path, "r") as f:
             ebook_cache = f.read().splitlines()
 
     try:
@@ -69,12 +71,12 @@ def doit(ebook_home, username, password, ogreserver=None):
     ebooks_dict = {}
 
     # write good ebooks into the local ogre cache to skip DRM test next run
-    with open(config.ebook_cache_temp_path, "w") as f_ogre_cache:
+    with open(ebook_cache_temp_path, "w") as f_ogre_cache:
 
         # now parse all book meta data; building a complete dataset
         for item in ebooks:
             meta = subprocess.check_output(
-                [config.calibre_ebook_meta_bin, item[0]],
+                [calibre_ebook_meta_bin, item[0]],
                 stderr=subprocess.STDOUT
             )
 
@@ -158,9 +160,9 @@ def doit(ebook_home, username, password, ogreserver=None):
     print "\nFound %s ebooks" % len(ebooks_dict)
 
     # move the temp cache onto the real ogre cache
-    statinfo = os.stat(config.ebook_cache_temp_path)
+    statinfo = os.stat(ebook_cache_temp_path)
     if statinfo.st_size > 0:
-        os.rename(config.ebook_cache_temp_path, config.ebook_cache_path)
+        os.rename(ebook_cache_temp_path, ebook_cache_path)
 
     print "Come on sucker, lick my battery"
 

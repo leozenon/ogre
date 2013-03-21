@@ -8,13 +8,12 @@ import subprocess
 import sys
 import tempfile
 
-import config
 from core import doit
 
 
 def main():
     # run some checks and create some config variables
-    prerequisites()
+    conf = prerequisites()
 
     parser = argparse.ArgumentParser(description="O.G.R.E. client application")
     parser.add_argument(
@@ -32,6 +31,7 @@ def main():
         '--password', '-p', action="store", dest="password",
         help=("Your O.G.R.E. password. "
               "You can also set the environment variable $EBOOK_PASS"))
+
     parser.add_argument(
         '--verbose', '-v', action="store_true", dest="verbose",
         help="Produce more output")
@@ -79,50 +79,61 @@ def main():
             if len(password) == 0:
                 sys.exit(1)
 
-    doit(ebook_home, username, password, ogreserver=args.ogreserver)
+    doit(ebook_home, username, password,
+        ogreserver=args.ogreserver,
+        config_dir=conf['config_dir'],
+        ebook_cache_path=conf['ebook_cache_path'],
+        ebook_cache_temp_path=conf['ebook_cache_temp_path'],
+        ebook_convert_path=conf['ebook_convert_path'],
+        calibre_ebook_meta_bin=conf['calibre_ebook_meta_bin']
+    )
 
 
 def prerequisites():
     # setup some ebook cache file paths
-    config.config_dir = "{0}/{1}".format(os.environ.get('XDG_CONFIG_HOME', os.path.expanduser('~/.config')), "ogre")
-    config.ebook_cache_path = "{0}/ebook_cache".format(config.config_dir)
-    config.ebook_cache_temp_path = "{0}/ebook_cache.tmp".format(config.config_dir)
+    config_dir = "{0}/{1}".format(os.environ.get('XDG_CONFIG_HOME', os.path.expanduser('~/.config')), "ogre")
+    ebook_cache_path = "{0}/ebook_cache".format(config_dir)
+    ebook_cache_temp_path = "{0}/ebook_cache.tmp".format(config_dir)
 
     # setup a temp path for DRM checks with ebook-convert
-    config.ebook_convert_path = "{0}/egg.epub".format(tempfile.gettempdir())
+    ebook_convert_path = "{0}/egg.epub".format(tempfile.gettempdir())
 
     # create a config directory in $HOME on first run
-    if not os.path.exists(config.config_dir):
+    if not os.path.exists(config_dir):
         print ("Please note that DRM scanning means the first run of ogreclient "
                 "will be much slower than subsequent runs.")
-        os.makedirs(config.config_dir)
+        os.makedirs(config_dir)
 
         # locate calibre's binaries
         try:
-            config.calibre_ebook_meta_bin = subprocess.check_output(
+            calibre_ebook_meta_bin = subprocess.check_output(
                 ['find', '/Applications', '-type', 'f', '-name', 'ebook-meta']
             ).strip()
 
-            if len(config.calibre_ebook_meta_bin) == 0:
+            if len(calibre_ebook_meta_bin) == 0:
                 raise Exception
         except:
             sys.stderr.write("You must install calibre in order to use ogreclient.")
             sys.exit(1)
 
         conf = {
-            'calibre_ebook_meta_bin': config.calibre_ebook_meta_bin
+            'calibre_ebook_meta_bin': calibre_ebook_meta_bin
         }
 
-        with open("{0}/app.config".format(config.config_dir), "w") as f_config:
+        with open("{0}/app.config".format(config_dir), "w") as f_config:
             f_config.write(json.dumps(conf))
 
     else:
         # read in config from $HOME
-        with open("{0}/app.config".format(config.config_dir), "r") as f_config:
+        with open("{0}/app.config".format(config_dir), "r") as f_config:
             conf = json.loads(f_config.read())
 
-        config.calibre_ebook_meta_bin = conf['calibre_ebook_meta_bin']
-
+    # return config object
+    conf['config_dir'] = config_dir
+    conf['ebook_cache_path'] = ebook_cache_path
+    conf['ebook_cache_temp_path'] = ebook_cache_temp_path
+    conf['ebook_convert_path'] = ebook_convert_path
+    return conf
 
 if __name__ == "__main__":
     main()
