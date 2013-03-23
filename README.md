@@ -46,10 +46,12 @@ Ogreserver
     On OSX you might get an error when compiling `gevent`. In order to fix this install Xcode 4.4+
 	and install the command line tools http://stackoverflow.com/q/11716107/425050.
 
-3. Create the auth DB:
+3. Setup the mysql app database. The optional second mysql command will create a new
+user for OGRE; which will subsequently be used in the SQLALCHEMY_DATABASE_URI config var:
 
     ```bash
-    mysql -u root -p -e "create database ogre character set = 'utf8';"
+    mysql -u root -p -e "create database ogre character set utf8;"
+    mysql -u root -p -e "GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,ALTER,INDEX,DROP,LOCK TABLES ON ogre.* TO 'db_username'@'localhost' IDENTIFIED BY 'password';"
     ./manage.py create_db
     ```
 
