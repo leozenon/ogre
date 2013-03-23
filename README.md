@@ -186,5 +186,5 @@ gem install compass
 Then in another screen/tmux window or tab, set compass to watch the static directory:
 
 ```bash
-compass watch
+compass watch ogreserver/static
 ```
