@@ -4,6 +4,7 @@ basedir = os.path.abspath(os.path.dirname(".."))
 # AWS config
 AWS_ACCESS_KEY = ""
 AWS_SECRET_KEY = ""
+AWS_REGION = "eu-west-1"
 S3_BUCKET = ""
 
 # Flask app

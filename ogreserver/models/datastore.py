@@ -4,6 +4,7 @@ import json
 import re
 
 import boto
+import boto.sdb
 from boto.exception import S3ResponseError
 
 from whoosh.qparser import MultifieldParser, OrGroup
@@ -23,7 +24,10 @@ class DataStore():
         against the contents of the Amazon SDB database.
         """
         new_ebook_count = 0
-        sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
+        sdb = boto.sdb.connect_to_region(app.config['AWS_REGION'],
+            aws_access_key_id=app.config['AWS_ACCESS_KEY'],
+            aws_secret_access_key=app.config['AWS_SECRET_KEY']
+        )
         domain = sdb.get_domain("ogre_ebooks")
 
         lib_updated = False
@@ -147,7 +151,10 @@ class DataStore():
         Create and store a new ebook entry with it's version info encoded as a json
         object in the 'data' param.
         """
-        sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
+        sdb = boto.sdb.connect_to_region(app.config['AWS_REGION'],
+            aws_access_key_id=app.config['AWS_ACCESS_KEY'],
+            aws_secret_access_key=app.config['AWS_SECRET_KEY']
+        )
         domain = sdb.get_domain("ogre_ebooks")
 
         key = DataStore.build_ebook_key(data['authortitle'])
@@ -197,7 +204,10 @@ class DataStore():
         """
         Check if this specific version's hash exists in any known ebook
         """
-        sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
+        sdb = boto.sdb.connect_to_region(app.config['AWS_REGION'],
+            aws_access_key_id=app.config['AWS_ACCESS_KEY'],
+            aws_secret_access_key=app.config['AWS_SECRET_KEY']
+        )
         rs = sdb.select("ogre_ebooks", "select itemName() from ogre_ebooks where hashes = '{0}'".format(filemd5))
         return (len(rs) > 0)
 
@@ -208,7 +218,10 @@ class DataStore():
         The for_update parameter alter the return to be a tuple containing the boto
         object which allows you to update and save the ebook
         """
-        sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
+        sdb = boto.sdb.connect_to_region(app.config['AWS_REGION'],
+            aws_access_key_id=app.config['AWS_ACCESS_KEY'],
+            aws_secret_access_key=app.config['AWS_SECRET_KEY']
+        )
         domain = sdb.get_domain("ogre_ebooks")
         b = domain.get_item(sdb_key)
         if b is None:
@@ -402,7 +415,10 @@ class DataStore():
         The verify_s3 flag enables a further check to be run against S3 to ensure 
         the file is actually there
         """
-        sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
+        sdb = boto.sdb.connect_to_region(app.config['AWS_REGION'],
+            aws_access_key_id=app.config['AWS_ACCESS_KEY'],
+            aws_secret_access_key=app.config['AWS_SECRET_KEY']
+        )
 
         if username is not None:
             if verify_s3 == True:
@@ -450,7 +466,10 @@ class DataStore():
         """
         Tag the Amazon SDB bucket with timestamp meta data
         """
-        sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
+        sdb = boto.sdb.connect_to_region(app.config['AWS_REGION'],
+            aws_access_key_id=app.config['AWS_ACCESS_KEY'],
+            aws_secret_access_key=app.config['AWS_SECRET_KEY']
+        )
         domain = sdb.get_domain("ogre_ebooks")
 
         # set library updated timestamp

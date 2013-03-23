@@ -50,7 +50,13 @@ Ogreserver
     ./manage.py create_db
     ```
 
-4. Modify the supervisor config. You will be looking to replace all paths in this 
+4. Initialize your OGRE SDB bucket via the 'kill' manage command:
+
+    ```bash
+    ./manage.py kill
+    ```
+
+5. Modify the supervisor config. You will be looking to replace all paths in this 
 file with ones that match your setup. Then run the following:
 
     ```bash
@@ -58,19 +64,19 @@ file with ones that match your setup. Then run the following:
     sudo supervisorctl update
     ```
 
-5. Create yourself a new user for OGRE:
+6. Create yourself a new user for OGRE:
 
     ```bash
     ./manage.py create_user <username> <password> <email_address>
     ```
 
-6. You should then be able to view and log into the website at:
+7. You should then be able to view and log into the website at:
 
     ```bash
     http://127.0.0.1:8005/ogre
     ```
 
-7. Now you'll want to synchronise some ebooks from Ogreclient.
+8. Now you'll want to synchronise some ebooks from Ogreclient.
 
 
 Ogreclient

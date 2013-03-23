@@ -49,12 +49,18 @@ def rebuild_index():
 @manager.command
 def kill():
     "Completely clear the SDB storage. USE WITH CAUTION!"
-    import boto
+    import boto.sdb
     import os
     import shutil
     import subprocess
-    sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
-    sdb.delete_domain("ogre_ebooks")
+    sdb = boto.sdb.connect_to_region(app.config['AWS_REGION'],
+        aws_access_key_id=app.config['AWS_ACCESS_KEY'],
+        aws_secret_access_key=app.config['AWS_SECRET_KEY']
+    )
+    try:
+        sdb.delete_domain("ogre_ebooks")
+    except boto.exception.SDBResponseError:
+        pass
     sdb.create_domain("ogre_ebooks")
     if os.path.exists(app.config['WHOOSH_BASE']):
         shutil.rmtree(app.config['WHOOSH_BASE'])
@@ -67,10 +73,13 @@ def kill():
 
 @manager.command
 def show():
-    import boto
+    import boto.sdb
     import json
 
-    sdb = boto.connect_sdb(app.config['AWS_ACCESS_KEY'], app.config['AWS_SECRET_KEY'])
+    sdb = boto.sdb.connect_to_region(app.config['AWS_REGION'],
+        aws_access_key_id=app.config['AWS_ACCESS_KEY'],
+        aws_secret_access_key=app.config['AWS_SECRET_KEY']
+    )
 
     rs = sdb.select("ogre_ebooks", "select sdb_key, data from ogre_ebooks")
     for item in rs:
