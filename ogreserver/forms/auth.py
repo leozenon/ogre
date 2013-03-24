@@ -11,7 +11,10 @@ class LoginForm(Form):
         if not super(LoginForm, self).validate():
             return False
 
-        user = User.authenticate(username=self.username.data, password=self.password.data)
+        user = User.authenticate(
+            username=self.username.data,
+            password=self.password.data
+        )
         if not user:
             self.username.errors.append('Invalid details.')
             return False
