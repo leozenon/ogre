@@ -10,10 +10,18 @@ from flask.ext.uploads import UploadSet, ALL, configure_uploads
 
 # instantiate Flask application
 app = Flask(__name__)
+conf_path = os.getenv("OGRE_CONF")
+if conf_path is None:
+    if os.path.exists("config/flask.app.conf.py"):
+        conf_path = "config/flask.app.conf.py"
+    else:
+        raise Exception("Missing application config! You must set the environment"
+                        "variable $OGRE_CONF, or create a file at config/flask.app.conf.py")
+
 try:
-    app.config.from_pyfile("config/flask.app.conf.py")
+    app.config.from_pyfile(conf_path)
 except IOError:
-    raise Exception("Missing application config! Do you need to decrypt it?")
+    raise Exception("Missing application config! No file at {0}".format(conf_path))
 
 # setup SQLAlchemy
 db = SQLAlchemy(app)
