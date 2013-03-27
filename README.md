@@ -52,27 +52,26 @@ user for OGRE; which will subsequently be used in the SQLALCHEMY_DATABASE_URI co
     ```bash
     mysql -u root -p -e "create database ogre character set utf8;"
     mysql -u root -p -e "GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,ALTER,INDEX,DROP,LOCK TABLES ON ogre.* TO 'db_username'@'localhost' IDENTIFIED BY 'password';"
-    ./manage.py create_db
     ```
 
-4. Initialize your OGRE SDB bucket via the 'kill' manage command:
+4. Initialize your OGRE SDB bucket, S3 storage and local mysql DB:
 
     ```bash
-    ./manage.py kill
+    ./manage.py init_ogre
     ```
 
-5. Modify the supervisor config. You will be looking to replace all paths in this 
+5. Create yourself a new user for OGRE:
+
+    ```bash
+    ./manage.py create_user <username> <password> <email_address>
+    ```
+
+6. Modify the supervisor config. You will be looking to replace all paths in this 
 file with ones that match your setup. Then run the following:
 
     ```bash
     ln -s /path/to/project/ogreserver/supervisor.conf /etc/supervisor/conf.d/ogre.conf
     sudo supervisorctl update
-    ```
-
-6. Create yourself a new user for OGRE:
-
-    ```bash
-    ./manage.py create_user <username> <password> <email_address>
     ```
 
 7. You should then be able to view and log into the website at:

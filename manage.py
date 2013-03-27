@@ -26,13 +26,6 @@ def verify_s3():
 
 
 @manager.command
-def create_db():
-    "Create the OGRE authentication DB"
-    db.create_all()
-    print "Database created"
-
-
-@manager.command
 def create_user(username, password, email):
     "Create a new user for OGRE"
     from ogreserver.models.user import User
@@ -50,6 +43,42 @@ def rebuild_index():
     "Reindex the entire DB into Whoosh."
     # TODO implement
     pass
+
+
+@manager.command
+def init_ogre():
+    "Initialize the AWS S3 bucket and SDB endpoints for OGRE."
+    # init S3
+    import boto
+    s3 = boto.connect_s3(
+        app.config['AWS_ACCESS_KEY'],
+        app.config['AWS_SECRET_KEY']
+    )
+    try:
+        s3.create_bucket(app.config['S3_BUCKET'], location=boto.s3.connection.Location.EU)
+    except boto.exception.S3CreateError as e:
+        if e.error_code == "BucketAlreadyOwnedByYou":
+            sys.stderr.write("You have already initialized OGRE!\n")
+            sys.exit(1)
+        elif e.error_code == "BucketAlreadyExists":
+            sys.stderr.write("{0}\n".format(e.error_message))
+            sys.exit(1)
+
+    # init SDB
+    import boto.sdb
+    sdb = boto.sdb.connect_to_region(app.config['AWS_REGION'],
+        aws_access_key_id=app.config['AWS_ACCESS_KEY'],
+        aws_secret_access_key=app.config['AWS_SECRET_KEY']
+    )
+    try:
+        sdb.create_domain("ogre_ebooks")
+    except boto.exception.SDBResponseError as e:
+        sys.stderr.write("{0}\n".format(e.error_message))
+        sys.exit(1)
+
+    # create the local mysql database from our models
+    db.create_all()
+    print "Succesfully initialized OGRE"
 
 
 @manager.command
