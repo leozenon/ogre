@@ -14,6 +14,18 @@ def full_test_setup(request):
     # delete everything
     _delete_all()
 
+    # create some users and sync their libraries
+    delay = _create_user_and_sync(1)
+    time.sleep(delay * 2 + 5)
+
+    delay = _create_user_and_sync(2)
+    time.sleep(delay * 2 + 5)
+
+    # add a teardown function
+    request.addfinalizer(_delete_all)
+
+
+def _create_user_and_sync(user_id):
     # setup a new user
     user = "user{0}".format(1)
     book_count = _user_create(1)
@@ -28,11 +40,7 @@ def full_test_setup(request):
         ebook_convert_path=conf['ebook_convert_path'],
         calibre_ebook_meta_bin=conf['calibre_ebook_meta_bin']
     )
-    # wait for celery to process in the background
-    time.sleep(book_count * 2 + 5)
-
-    # add a teardown function
-    request.addfinalizer(_delete_all)
+    return book_count
 
 
 @pytest.fixture
@@ -140,7 +148,13 @@ def test_full(full_test_setup, flask_app):
     import urllib
     assert urllib.urlopen(dl_url).getcode() == 200
     time.sleep(flask_app.config['DOWNLOAD_LINK_EXPIRY'] + 5)
-    assert urllib.urlopen(dl_url).getcode() == 403, "S3 download link didn't expire"
+    assert urllib.urlopen(dl_url).getcode() == 403, \
+        "S3 download link didn't expire [{0}]".format(dl_url)
+
+    # sync another user and verify the library
+    # pg11 is a mobi conversion of the epub
+    # pg55 is an exact dupe
+    pytest.set_trace()
 
 
 def _ogreclient_config(num):
@@ -178,10 +192,9 @@ def _user_create(num):
     if not os.path.exists(libpath):
         os.makedirs(libpath)
     book_count = 0
-    import fnmatch
-    for root, dirnames, filenames in os.walk("tests/ebooks"):
-        for fn in fnmatch.filter(filenames, "*.epub"):
-            shutil.copy(os.path.join(root, fn), os.path.join(libpath, fn))
+    for root, dirs, files in os.walk("tests/ebooks{0}".format(num)):
+        for filename in files:
+            shutil.copy(os.path.join(root, filename), os.path.join(libpath, filename))
             book_count += 1
     return book_count
 
