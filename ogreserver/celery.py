@@ -1,1 +1,1 @@
-config/celery.py
+from . import celery

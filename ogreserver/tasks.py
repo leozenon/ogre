@@ -2,8 +2,7 @@ import os
 import json
 import subprocess
 
-from . import app
-from celery import celery
+from . import app, celery
 
 from models.user import User
 from models.datastore import DataStore, S3DatastoreError
