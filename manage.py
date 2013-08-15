@@ -6,7 +6,7 @@ import os
 import sys
 
 from flask.ext.script import Manager
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, ProgrammingError
 
 from ogreserver import app, db
 
@@ -46,38 +46,74 @@ def rebuild_index():
 
 
 @manager.command
-def init_ogre():
-    "Initialize the AWS S3 bucket and SDB endpoints for OGRE."
+def init_ogre(test=False):
+    """
+    Initialize the AWS S3 bucket and SDB endpoints for OGRE.
+
+    test (bool)
+        Only check if OGRE has been setup; don't actually do anything
+    """
+
     # init S3
     import boto
     s3 = boto.connect_s3(
         app.config['AWS_ACCESS_KEY'],
         app.config['AWS_SECRET_KEY']
     )
+
+    # check bucket already exists
+    aws_setup = False
+    for b in s3.get_all_buckets():
+        if b.name == app.config['S3_BUCKET']:
+            aws_setup = True
+
+    # check mysql DB created
     try:
-        s3.create_bucket(app.config['S3_BUCKET'], location=boto.s3.connection.Location.EU)
-    except boto.exception.S3CreateError as e:
-        if e.error_code == "BucketAlreadyOwnedByYou":
+        from ogreserver.models.user import User
+        User.query.first()
+        db_setup = True
+    except ProgrammingError:
+        db_setup = False
+
+    if test is True:
+        # only report state in test mode
+        if aws_setup is True and db_setup is True:
+            print "Already setup"
+            sys.exit(0)
+        else:
+            print "Not setup"
+            sys.exit(1)
+    else:
+        if aws_setup is True and db_setup is True:
             sys.stderr.write("You have already initialized OGRE!\n")
             sys.exit(1)
-        elif e.error_code == "BucketAlreadyExists":
-            sys.stderr.write("{0}\n".format(e.error_message))
-            sys.exit(1)
 
-    # init SDB
-    import boto.sdb
-    sdb = boto.sdb.connect_to_region(app.config['AWS_REGION'],
-        aws_access_key_id=app.config['AWS_ACCESS_KEY'],
-        aws_secret_access_key=app.config['AWS_SECRET_KEY']
-    )
-    try:
-        sdb.create_domain("ogre_ebooks")
-    except boto.exception.SDBResponseError as e:
-        sys.stderr.write("{0}\n".format(e.error_message))
-        sys.exit(1)
+        # create the local mysql database from our models
+        if db_setup is False:
+            db.create_all()
 
-    # create the local mysql database from our models
-    db.create_all()
+        if aws_setup is False:
+            try:
+                s3.create_bucket(app.config['S3_BUCKET'], location=boto.s3.connection.Location.EU)
+            except boto.exception.S3CreateError as e:
+                if e.error_code == "BucketAlreadyExists":
+                    sys.stderr.write("Bucket name already in use!\n  {0}\n".format(e.error_message))
+                else:
+                    sys.stderr.write("{0}\n".format(e.error_message))
+                sys.exit(1)
+
+            # init SDB
+            import boto.sdb
+            sdb = boto.sdb.connect_to_region(app.config['AWS_REGION'],
+                aws_access_key_id=app.config['AWS_ACCESS_KEY'],
+                aws_secret_access_key=app.config['AWS_SECRET_KEY']
+            )
+            try:
+                sdb.create_domain("ogre_ebooks")
+            except boto.exception.SDBResponseError as e:
+                sys.stderr.write("Failed creating SDB domain!\n  {0}\n".format(e.error_message))
+                sys.exit(1)
+
     print "Succesfully initialized OGRE"
 
 
@@ -87,6 +123,9 @@ def kill():
     import boto.sdb
     import shutil
     import subprocess
+
+    # TODO add some kind of confirmation here...
+
     sdb = boto.sdb.connect_to_region(app.config['AWS_REGION'],
         aws_access_key_id=app.config['AWS_ACCESS_KEY'],
         aws_secret_access_key=app.config['AWS_SECRET_KEY']
