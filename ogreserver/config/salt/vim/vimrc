@@ -1,0 +1,88 @@
+" Vim settings
+
+
+"---- General settings and fail safes-----------------------------------
+set nocompatible				" Not vi compatible
+set tabstop=4					" Set the tab size to 4
+set shiftwidth=4				" Set indent size
+set nu							" Turn on line numbers
+set showcmd						" Show (partial) command in status line.
+set showmatch					" Show matching brackets.
+set ignorecase					" Do case insensitive matching
+set hlsearch        			" Highlight search terms found
+set incsearch					" Find as you type
+set nobackup					" No backup files (file~)
+set nowritebackup				" 
+set noswapfile					" No .swp files
+set laststatus=2				" always have a status bar at the bottom.
+set mouse=a						" Allow mouse where possible
+set ttymouse=xterm2				" Enable the mouse through GNU screen
+set background=dark				" Default. Background may be overridden is OS settings
+set showtabline=2				" Always show the tab line
+set guioptions-=T				" Turn off toolbars, but leave on menues
+set shortmess=I					" Turn off the intro message
+
+
+"---- OS Specific options ----------------------------------------------
+if has('unix')
+	"Unix general settings
+	highlight LineNr guifg=red guibg=grey90
+	colorscheme ir_black_plus
+endif
+
+
+"---- File type options ------------------------------------------------
+" Individual filetype settings in ~/.vim/ftplugin/<type>.vim
+syntax enable					" General file type syntax highlighting
+filetype on
+filetype plugin on				" Use filetype plugins
+filetype indent on				" Filetype indenting
+
+" Small changes that don't warrent an ftplugin file of their own
+au filetype help :se nonu		" turn off line numbers for help
+
+
+"---- Mappings ---------------------------------------------------------
+"NOTE: 	To see what a key sends use ctrl+k then keystroke while in insert mode
+
+" Map a key for some spell checking
+map <F7> :setlocal spell! spelllang=en_gb<cr>
+imap <F7> <ESC><F7>
+
+" Shortcut tab next/previous
+map <C-P>] :tabnext<CR>
+map <C-P>[ :tabprevious<CR>
+
+"Easy insert newline
+noremap 0 o<ESC>
+
+" Make standard "gf" open in a new tab
+noremap gf <C-w>gF
+
+"---- Code completion options ------------------------------------------
+" The same trick is needed to get ctrl+space to autocomplete in all environments
+if has("gui_running")
+	imap <C-Space> <C-x><C-o>
+else
+	imap <nul> <C-x><C-o>
+endif
+
+" This makes AC easier to use
+set completeopt=longest,menuone,preview
+
+" Auto close the preview window when selected or move
+autocmd CursorMovedI * if pumvisible() == 0|pclose|endif
+autocmd InsertLeave * if pumvisible() == 0|pclose|endif
+
+" highlight .wsgi files as python
+au BufNewFile,BufRead *.wsgi	setf python
+
+
+"---- Code folding ------------------------------------------------------
+set foldmethod=indent
+set foldlevel=99
+
+
+"---- Pathogen ----------------------------------------------------------
+call pathogen#infect()
+call pathogen#helptags()

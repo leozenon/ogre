@@ -1,0 +1,28 @@
+[core]
+	autocrlf = false
+	eol = lf
+	whitespace = trailing-space,space-before-tab
+	pager = less -F -X
+[color]
+	ui = auto
+	diff = auto
+[gui]
+	encoding = utf-8
+[alias]
+	st = status
+	ci = commit
+	br = branch -a
+	co = checkout
+	df = diff
+	lg = log -p
+[help]
+	autocorrect = 1
+[advice]
+	statusHints = false
+[diff]
+	renames = copies
+[push]
+	default = simple
+[user]
+	name = {{ grains['id'] }}
+	email = {{ grains['id'] }}@jbadigital.com
