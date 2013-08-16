@@ -26,16 +26,37 @@ def verify_s3():
 
 
 @manager.command
-def create_user(username, password, email):
-    "Create a new user for OGRE"
+def create_user(username, password, email, test=False):
+    """
+    Create a new user for OGRE
+
+    test (bool)
+        Only check if user has been created; don't actually do anything
+    """
+    # load a user
     from ogreserver.models.user import User
-    user = User(username, password, email)
-    db.session.add(user)
-    try:
-        db.session.commit()
-    except IntegrityError:
-        print "A user with this email address already exists"
-        sys.exit(1)
+    user = User.query.filter_by(username=username).first()
+
+    if test is True:
+        # only report state in test mode
+        if user is None:
+            print "User exists"
+            sys.exit(1)
+        else:
+            print "User doesn't exist"
+            sys.exit(0)
+    else:
+        if user is None:
+            user = User(username, password, email)
+            db.session.add(user)
+            try:
+                db.session.commit()
+            except IntegrityError:
+                print "A user with this email address already exists"
+                sys.exit(1)
+        else:
+            print "User {0} already exists".format(username)
+            sys.exit(1)
 
 
 @manager.command
