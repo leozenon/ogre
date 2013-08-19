@@ -1,12 +1,20 @@
-gunicorn:
-  pkg:
-    - installed
+/etc/gunicorn.d:
+  file.directory:
+    - mode: 655
 
-/etc/gunicorn.d/{{ pillar['app_name'] }}.conf.py:
+# gunicorn config with defaults for production
+gunicorn-config:
   file.managed:
+    - name: /etc/gunicorn.d/{{ pillar['app_name'] }}.conf.py
     - source: salt://gunicorn/gunicorn.conf.py
     - template: jinja
     - mode: 644
-    - context:
+    - defaults:
         app_name: {{ pillar['app_name'] }}
-        gunicorn_port: {{ pillar['gunicorn_port'] }}
+        bind_hostname: 127.0.0.1
+        gunicorn_port: 8001
+        worker_class: sync
+        timeout: 30
+        loglevel: error
+    - requires:
+      - file: /etc/gunicorn.d

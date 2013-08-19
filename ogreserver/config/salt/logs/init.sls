@@ -1,8 +1,9 @@
 include:
   - create-app-user
 
-/var/log/{{ pillar['app_name'] }}:
+app-log-directory:
   file.directory:
+    - name: /var/log/{{ pillar['app_name'] }}
     - user: {{ pillar['app_user'] }}
     - group: {{ pillar['app_user'] }}
     - mode: 755

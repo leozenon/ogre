@@ -1,19 +1,21 @@
 #################################################
 # Gunicorn config for ogreserver
-#
-# This is loaded via Supervisor into Gunicorn
-# 
 #################################################
 
+bind = '{{ bind_hostname }}:{{ gunicorn_port }}'
+{% if 'env' in grains and grains['env'] == 'dev' %}
+workers = 1
+{% else %}
 import multiprocessing
-
-bind = '127.0.0.1:{{ gunicorn_port }}'
 workers = multiprocessing.cpu_count() * 2 + 1
-worker_class = 'socketio.sgunicorn.GeventSocketIOWorker'
+{% endif %}
+#worker_class = 'socketio.sgunicorn.GeventSocketIOWorker'
 backlog = 2048
-worker_class = "gevent"
+worker_class = '{{ worker_class }}'
 debug = True
-proc_name = 'gunicorn-{{ app_name }}.pid'
+daemon = False
+timeout = {{ timeout }}
+proc_name = 'gunicorn-{{ app_name }}'
 pidfile = '/tmp/gunicorn-{{ app_name }}.pid'
-logfile = '/var/log/{{ app_name }}/gunicorn.log'
-loglevel = 'info'
+errorlog = '-'
+loglevel = '{{ loglevel }}'

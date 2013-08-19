@@ -2,6 +2,13 @@ include:
   - gitrepo
   - ssh
 
+dev_packages:
+  pkg.installed:
+    - names:
+      - curl
+      - man-db
+      - telnet
+
 # install some extra packages
 {% for package_name in pillar.get('extras', []) %}
 extra_{{ package_name }}:

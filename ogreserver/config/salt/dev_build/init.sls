@@ -2,6 +2,16 @@ include:
   - googledatastore
   - watchdog
 
+extend:
+  gunicorn-config:
+    file.managed:
+      - context:
+          bind_hostname: "0.0.0.0"
+          gunicorn_port: {{ pillar['gunicorn_port'] }}
+          worker_class: sync
+          timeout: 300
+          loglevel: info
+
 logs-chown:
   file.directory:
     - name: /var/log/{{ pillar['app_name'] }}
@@ -12,18 +22,6 @@ logs-chown:
     - group: {{ pillar['login_user'] }}
     - require:
       - supervisord: gunicorn-service
-      - supervisord: celeryd-service
-
-gunicorn-service-dead:
-  supervisord.dead:
-    - name: ogreserver.gunicorn
-    - require:
-      - supervisord: gunicorn-service
-
-celeryd-service-dead:
-  supervisord.dead:
-    - name: ogreserver.celeryd
-    - require:
       - supervisord: celeryd-service
 
 ogre-create-user:
@@ -37,8 +35,7 @@ ogre-create-user:
       - cmd: ogre-init
 
 rubygems:
-  pkg:
-    - installed
+  pkg.installed
 
 zurb-foundation-gem:
   gem.installed:

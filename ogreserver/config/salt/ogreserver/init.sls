@@ -21,6 +21,12 @@ extend:
       - context:
           directory: /srv/ogre/ogreserver/static
 
+  gunicorn-config:
+    file.managed:
+      - context:
+          worker_class: gevent
+
+
 pip-dependencies-extra:
   pkg.installed:
     - names:
@@ -68,9 +74,7 @@ ogre-init:
 supervisor:
   pkg.installed:
     - require:
-      - pkg: gunicorn
       - file: /etc/supervisor/conf.d/ogreserver.conf
-      - file: /var/log/{{ pillar['app_name'] }}
       - virtualenv: app-virtualenv-install
       - git: git-clone-app
 
@@ -80,9 +84,9 @@ gunicorn-service:
     - update: true
     - watch:
       - file: /etc/supervisor/conf.d/ogreserver.conf
+      - file: /etc/gunicorn.d/{{ pillar['app_name'] }}.conf.py
     - require:
       - user: {{ pillar['app_user'] }}
-      - file: /var/log/{{ pillar['app_name'] }}
       - file: flask-config
       - pkg: supervisor
 
@@ -94,7 +98,6 @@ celeryd-service:
       - file: /etc/supervisor/conf.d/ogreserver.conf
     - require:
       - user: {{ pillar['app_user'] }}
-      - file: /var/log/{{ pillar['app_name'] }}
       - file: flask-config
       - pkg: supervisor
 
