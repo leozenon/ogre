@@ -43,5 +43,6 @@ gcd-supervisor-service:
     - update: True
     - require:
       - cmd: gcd-create-datastore
+      - service: supervisor
     - watch:
       - file: gcd-supervisor-config

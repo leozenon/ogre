@@ -8,10 +8,18 @@ include:
   - nginx
   - rabbitmq
   - salt-hack
+  - supervisor
   - virtualenv-base
 
 
 extend:
+  supervisor:
+    pip.installed:
+      - require:
+        - file: /etc/supervisor/conf.d/ogreserver.conf
+        - virtualenv: app-virtualenv
+        - git: git-clone-app
+
   git-clone-app:
     git.latest:
       - rev: salt
@@ -71,13 +79,6 @@ ogre-init:
     - source: salt://ogreserver/supervisord.conf
     - template: jinja
 
-supervisor:
-  pkg.installed:
-    - require:
-      - file: /etc/supervisor/conf.d/ogreserver.conf
-      - virtualenv: app-virtualenv-install
-      - git: git-clone-app
-
 gunicorn-service:
   supervisord.running:
     - name: ogreserver.gunicorn
@@ -88,7 +89,7 @@ gunicorn-service:
     - require:
       - user: {{ pillar['app_user'] }}
       - file: flask-config
-      - pkg: supervisor
+      - service: supervisor
 
 celeryd-service:
   supervisord.running:
@@ -99,7 +100,7 @@ celeryd-service:
     - require:
       - user: {{ pillar['app_user'] }}
       - file: flask-config
-      - pkg: supervisor
+      - service: supervisor
 
 
 #/etc/nginx/conf.d/upstream.conf:

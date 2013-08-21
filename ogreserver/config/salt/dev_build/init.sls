@@ -12,6 +12,24 @@ extend:
           timeout: 300
           loglevel: info
 
+  supervisor-config:
+    file.managed:
+      - context:
+          runas: {{ pillar['login_user'] }}
+
+  supervisor-log-dir:
+    file.directory:
+      - user: {{ pillar['login_user'] }}
+
+  supervisor-sock-dir:
+    file.directory:
+      - user: {{ pillar['login_user'] }}
+
+  supervisor-init-script:
+    file.managed:
+      - user: {{ pillar['login_user'] }}
+
+
 logs-chown:
   file.directory:
     - name: /var/log/{{ pillar['app_name'] }}
