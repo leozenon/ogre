@@ -29,6 +29,12 @@ extend:
     file.managed:
       - user: {{ pillar['login_user'] }}
 
+  tmux-powerline-theme:
+    file.managed:
+      - context:
+          gunicorn: true
+          celeryd: true
+
 
 logs-chown:
   file.directory:
@@ -60,3 +66,18 @@ zurb-foundation-gem:
     - name: zurb-foundation
     - require:
       - pkg: rubygems
+
+# install tmux segments for gunicorn & celeryd state
+{% for app in ('gunicorn', 'celeryd') %}
+tmux-{{ app }}-segment:
+  file.managed:
+    - name: /home/{{ pillar['login_user'] }}/tmux-powerline/segments/{{ app }}.sh
+    - source: salt://tmux/pid-segment.tmpl.sh
+    - template: jinja
+    - user: {{ pillar['login_user'] }}
+    - context:
+        component_name: {{ app }}
+    - require:
+      - cmd: dotfiles-install-tmux
+      - git: tmux-powerline-install
+{% endfor %}

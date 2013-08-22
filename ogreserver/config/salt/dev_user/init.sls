@@ -1,6 +1,9 @@
 include:
   - gitrepo
   - ssh
+  {% if 'tmux' in pillar.get('extras', []) %}
+  - tmux
+  {% endif %}
 
 dev_packages:
   pkg.installed:
@@ -40,22 +43,36 @@ dotfiles:
     - watch:
       - git: dotfiles
 
-# patch tmux-powerlinerc to set theme
-tmux-powerline-theme:
-  file.sed:
-    - name: /home/{{ pillar['login_user'] }}/dotfiles/tmux/.tmux-powerlinerc
-    - before: "TMUX_POWERLINE_THEME=\"mafro\""
-    - after: "TMUX_POWERLINE_THEME=\"{{ pillar['tmux-powerline-theme'] }}\""
-    - backup: ""
-    - require:
-      - cmd: dotfiles
-
-# run dotfiles install script
-dev-install-dotfiles:
+# run dotfiles install scripts
+{% if 'vim' in pillar.get('extras', []) %}
+dotfiles-install-vim:
   cmd.run:
-    - name: ./install.sh -f vim zsh tmux git &> /dev/null
+    - name: ./install.sh -f vim &> /dev/null
     - unless: test -L /home/{{ pillar['login_user'] }}/.vimrc
     - cwd: /home/{{ pillar['login_user'] }}/dotfiles
     - user: {{ pillar['login_user'] }}
     - require:
       - cmd: dotfiles
+{% endif %}
+
+{% if 'zsh' in pillar.get('extras', []) %}
+dotfiles-install-zsh:
+  cmd.run:
+    - name: ./install.sh -f zsh &> /dev/null
+    - unless: test -L /home/{{ pillar['login_user'] }}/.zshrc
+    - cwd: /home/{{ pillar['login_user'] }}/dotfiles
+    - user: {{ pillar['login_user'] }}
+    - require:
+      - cmd: dotfiles
+{% endif %}
+
+{% if 'git' in pillar.get('extras', []) %}
+dotfiles-install-git:
+  cmd.run:
+    - name: ./install.sh -f git &> /dev/null
+    - unless: test -L /home/{{ pillar['login_user'] }}/.gitconfig
+    - cwd: /home/{{ pillar['login_user'] }}/dotfiles
+    - user: {{ pillar['login_user'] }}
+    - require:
+      - cmd: dotfiles
+{% endif %}
