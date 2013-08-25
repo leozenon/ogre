@@ -16,7 +16,8 @@ extend:
   supervisor:
     pip.installed:
       - require:
-        - file: /etc/supervisor/conf.d/ogreserver.conf
+        - file: /etc/supervisor/conf.d/gunicorn.ogreserver.conf
+        - file: /etc/supervisor/conf.d/celeryd.ogreserver.conf
         - virtualenv: app-virtualenv
         - git: git-clone-app
 
@@ -74,9 +75,9 @@ ogre-init:
       - mysql_grants: create-mysql-user-perms
 
 
-/etc/supervisor/conf.d/ogreserver.conf:
+/etc/supervisor/conf.d/gunicorn.ogreserver.conf:
   file.managed:
-    - source: salt://ogreserver/supervisord.conf
+    - source: salt://ogreserver/supervisord.gunicorn.conf
     - template: jinja
 
 gunicorn-service:
@@ -84,19 +85,25 @@ gunicorn-service:
     - name: ogreserver.gunicorn
     - update: true
     - watch:
-      - file: /etc/supervisor/conf.d/ogreserver.conf
+      - file: /etc/supervisor/conf.d/gunicorn.ogreserver.conf
       - file: /etc/gunicorn.d/{{ pillar['app_name'] }}.conf.py
     - require:
       - user: {{ pillar['app_user'] }}
       - file: flask-config
       - service: supervisor
 
+
+/etc/supervisor/conf.d/celeryd.ogreserver.conf:
+  file.managed:
+    - source: salt://ogreserver/supervisord.celeryd.conf
+    - template: jinja
+
 celeryd-service:
   supervisord.running:
     - name: ogreserver.celeryd
     - update: true
     - watch:
-      - file: /etc/supervisor/conf.d/ogreserver.conf
+      - file: /etc/supervisor/conf.d/celeryd.ogreserver.conf
     - require:
       - user: {{ pillar['app_user'] }}
       - file: flask-config
