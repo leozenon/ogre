@@ -11,6 +11,7 @@ dev_packages:
       - curl
       - man-db
       - telnet
+      - htop
 
 # install some extra packages
 {% for package_name in pillar.get('extras', []) %}
@@ -53,6 +54,14 @@ dotfiles-install-vim:
     - user: {{ pillar['login_user'] }}
     - require:
       - cmd: dotfiles
+
+# prevent ~/.viminfo being owned by root
+viminfo-touch:
+  file.managed:
+    - name: /home/{{ pillar['login_user'] }}/.viminfo
+    - user: {{ pillar['login_user'] }}
+    - group: {{ pillar['login_user'] }}
+    - mode: 644
 {% endif %}
 
 {% if 'zsh' in pillar.get('extras', []) %}
@@ -74,5 +83,8 @@ dotfiles-install-git:
     - cwd: /home/{{ pillar['login_user'] }}/dotfiles
     - user: {{ pillar['login_user'] }}
     - require:
+      {% if 'vim' in pillar.get('extras', []) %}
+      - file: viminfo-touch
+      {% endif %}
       - cmd: dotfiles
 {% endif %}
