@@ -13,4 +13,3 @@ passlib==1.6.1
 MySQL-python==1.2.4
 whoosh==2.5.2
 sesame==0.2.1
-googledatastore==v1beta1-rev2-1.0.1

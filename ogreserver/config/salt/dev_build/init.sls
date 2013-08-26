@@ -1,5 +1,4 @@
 include:
-  - googledatastore
   - watchdog
 
 extend:
