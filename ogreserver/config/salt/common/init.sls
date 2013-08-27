@@ -1,5 +1,6 @@
 include:
   - apt
+  - vmware-guest-tools
   {% if grains['env'] != 'dev' %}
   - vim
   {% endif %}
