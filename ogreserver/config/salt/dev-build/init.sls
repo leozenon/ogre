@@ -34,6 +34,11 @@ extend:
           gunicorn: true
           celeryd: true
 
+  rethinkdb-config:
+    file.managed:
+      - context:
+          production: false
+
 
 logs-chown:
   file.directory:

@@ -7,6 +7,7 @@ include:
   - mysql
   - nginx
   - rabbitmq
+  - rethinkdb
   - salt-hack
   - supervisor
   - virtualenv-base
@@ -73,6 +74,7 @@ ogre-init:
       - virtualenv: app-virtualenv
       - file: flask-config
       - mysql_grants: create-mysql-user-perms
+      - pip: rethinkdb-python-driver
 
 
 /etc/supervisor/conf.d/gunicorn.ogreserver.conf:

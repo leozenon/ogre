@@ -13,3 +13,4 @@ passlib==1.6.1
 MySQL-python==1.2.4
 whoosh==2.5.2
 sesame==0.2.1
+rethinkdb==1.8.0-1
