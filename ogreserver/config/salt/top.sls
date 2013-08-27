@@ -8,5 +8,5 @@ base:
 
   'env:dev':
     - match: grain
-    - dev_user
-    - dev_build
+    - dev-user
+    - dev-build

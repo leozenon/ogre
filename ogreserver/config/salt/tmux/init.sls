@@ -1,7 +1,7 @@
 # Setup tmux and tmux-powerline
 #
 # Assumes usage of dotfiles repo at pillar['github_username']
-# via the dev_user state
+# via the dev-user state
 # 
 # Assumes a tmux.conf file is provided in the dotfiles
 
