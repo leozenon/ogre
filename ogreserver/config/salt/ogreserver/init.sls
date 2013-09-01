@@ -1,4 +1,5 @@
 include:
+  - calibre
   - common
   - compass
   - gitrepo
