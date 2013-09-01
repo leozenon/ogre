@@ -8,6 +8,9 @@ import sys
 from flask.ext.script import Manager
 from sqlalchemy.exc import IntegrityError, ProgrammingError
 
+import rethinkdb as r
+from rethinkdb.errors import RqlRuntimeError
+
 from ogreserver import app, db
 
 manager = Manager(app)
@@ -96,16 +99,24 @@ def init_ogre(test=False):
     except ProgrammingError:
         db_setup = False
 
+    # check rethinkdb initialized
+    conn = r.connect("localhost", 28015)
+    try:
+        r.db("ogreserver").table("ebooks").run(conn)
+        rdb_setup = True
+    except RqlRuntimeError:
+        rdb_setup = False
+
     if test is True:
         # only report state in test mode
-        if aws_setup is True and db_setup is True:
+        if aws_setup is True and db_setup is True and rdb_setup is True:
             print "Already setup"
             sys.exit(0)
         else:
             print "Not setup"
             sys.exit(1)
     else:
-        if aws_setup is True and db_setup is True:
+        if aws_setup is True and db_setup is True and rdb_setup is True:
             sys.stderr.write("You have already initialized OGRE!\n")
             sys.exit(1)
 
@@ -135,33 +146,38 @@ def init_ogre(test=False):
                 sys.stderr.write("Failed creating SDB domain!\n  {0}\n".format(e.error_message))
                 sys.exit(1)
 
+        if rdb_setup is False:
+            # create a database and a couple of tables
+            r.db_create('ogreserver').run(conn)
+            r.db('ogreserver').table_create('ebooks').run(conn)
+            r.db('ogreserver').table_create('versions').run(conn)
+            r.db('ogreserver').table_create('formats').run(conn)
+            r.db('ogreserver').table('versions').index_create('ebook_id').run(conn)
+            r.db('ogreserver').table('formats').index_create('version_id').run(conn)
+
     print "Succesfully initialized OGRE"
 
 
 @manager.command
 def kill():
     "Completely clear the SDB storage. USE WITH CAUTION!"
-    import boto.sdb
     import shutil
     import subprocess
 
     # TODO add some kind of confirmation here...
+    conn = r.connect("localhost", 28015, db="ogreserver")
 
-    sdb = boto.sdb.connect_to_region(app.config['AWS_REGION'],
-        aws_access_key_id=app.config['AWS_ACCESS_KEY'],
-        aws_secret_access_key=app.config['AWS_SECRET_KEY']
-    )
-    try:
-        sdb.delete_domain("ogre_ebooks")
-    except boto.exception.SDBResponseError:
-        pass
-    sdb.create_domain("ogre_ebooks")
+    # truncate all tables in rethinkdb
+    for table in ('ebooks', 'versions', 'formats'):
+        r.table(table).delete().run(conn)
+
+    # delete the whoosh index
     if os.path.exists(app.config['WHOOSH_BASE']):
         shutil.rmtree(app.config['WHOOSH_BASE'])
-    if os.path.exists("/tmp/gunicorn-ogre.pid"):
-        with open("/tmp/gunicorn-ogre.pid", "r") as f:
-            pid = f.read()
-        subprocess.call(['kill', '-HUP', pid.strip()])
+
+    # restart gunicorn to initialize whoosh
+    subprocess.call('supervisorctl restart ogre.gunicorn:ogreserver.gunicorn', shell=True)
+
     print "Killed"
 
 

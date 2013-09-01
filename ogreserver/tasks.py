@@ -11,33 +11,18 @@ from models.log import Log
 
 
 @celery.task(name="ogreserver.store_ebook")
-def store_ebook(user_id, sdb_key, authortitle, filemd5, version, fmt):
+def store_ebook(user_id, ebook_id, file_md5, fmt):
     """
     Store an ebook in the datastore
     """
     try:
-        filepath = "{0}/{1}.{2}".format(app.config['UPLOADED_EBOOKS_DEST'], filemd5, fmt)
-        filename = DataStore.generate_filename(authortitle, filemd5, fmt)
-
-        # extract ebook meta
-        meta = subprocess.Popen(['ebook-meta', filepath],
-                                stdout=subprocess.PIPE).communicate()[0]
+        filepath = "{0}/{1}.{2}".format(app.config['UPLOADED_EBOOKS_DEST'], file_md5, fmt)
+        filename = DataStore.generate_filename(ebook_id, file_md5, fmt)
 
         user = User.query.get(user_id)
 
-        print "store_ebook: {0}".format(json.dumps({
-            'filename': filename,
-            'filemd5': filemd5,
-            'user': str(user),
-        }, indent=2))
-
         # store the file into S3
-        if DataStore.store_ebook(sdb_key, filemd5, filename, filepath, version, fmt):
-
-            # flag the book as having DRM removed
-            if "Tags                : DeDRM" in meta:
-                DataStore.set_dedrm_flag(sdb_key)
-
+        if DataStore.store_ebook(ebook_id, file_md5, filename, filepath, fmt):
             # stats log the upload
             Log.create(user.id, "STORED", 1)
 
@@ -64,13 +49,13 @@ def convert_ebook(sdbkey, source_filepath, dest_fmt):
     Convert an ebook to another format, and push to datastore
     """
     pass
-    #source_filepath = "%s/%s.%s" % (app.config['UPLOADED_EBOOKS_DEST'], filemd5, fmt)
+    #source_filepath = "%s/%s.%s" % (app.config['UPLOADED_EBOOKS_DEST'], file_md5, fmt)
 
     #for convert_fmt in app.config['EBOOK_FORMATS']:
     #    if fmt == convert_fmt:
     #        continue
 
-    #    dest_filepath = "%s/%s.%s" % (app.config['UPLOADED_EBOOKS_DEST'], filemd5, fmt)
+    #    dest_filepath = "%s/%s.%s" % (app.config['UPLOADED_EBOOKS_DEST'], file_md5, fmt)
 
     #    meta = subprocess.Popen(['ebook-convert', source_filepath, ], 
     #                            stdout=subprocess.PIPE).communicate()[0]
@@ -79,7 +64,7 @@ def convert_ebook(sdbkey, source_filepath, dest_fmt):
     #    if user_id == None:
     #        raise Exception("user_id must be supplied to convert_ebook when store=True")
 
-    #    store_ebook.delay(user_id, sdbkey, filemd5, fmt)
+    #    store_ebook.delay(user_id, sdbkey, file_md5, fmt)
 
 
 # TODO nightly which recalculates book ratings: 

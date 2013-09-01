@@ -75,17 +75,17 @@ def list():
     return render_template("list.html", ebooks=rs)
 
 
-@app.route("/ajax/rating/<sdb_key>")
+@app.route("/ajax/rating/<pk>")
 @login_required
-def get_rating(sdb_key):
-    rating = DataStore.get_rating(sdb_key)
+def get_rating(pk):
+    rating = DataStore.get_rating(pk)
     return jsonify({'rating': rating})
 
 
-@app.route("/ajax/comment-count/<sdb_key>")
+@app.route("/ajax/comment-count/<pk>")
 @login_required
-def get_comment_count(sdb_key):
-    comments = DataStore.get_comments(sdb_key)
+def get_comment_count(pk):
+    comments = DataStore.get_comments(pk)
     return jsonify({'comments': len(comments)})
 
 
@@ -97,11 +97,11 @@ def view(sdbkey=None):
     return render_template("view.html", ebooks=rs)
 
 
-@app.route('/download/<sdb_key>/', defaults={'fmt': None})
-@app.route("/download/<sdb_key>/<fmt>")
+@app.route('/download/<pk>/', defaults={'fmt': None})
+@app.route("/download/<pk>/<fmt>")
 @login_required
-def download(sdb_key, fmt=None):
-    return redirect(DataStore.get_ebook_url(sdb_key, fmt))
+def download(pk, fmt=None):
+    return redirect(DataStore.get_ebook_url(pk, fmt))
 
 
 @app.route("/dedrm")
@@ -129,21 +129,43 @@ def post(auth_key):
 
     # update the library
     ds = DataStore(user)
-    new_ebook_count = ds.update_library(data)
-    Log.create(user.id, "NEW", new_ebook_count, key_parts[1])
+    new_books = ds.update_library(data)
+    Log.create(user.id, "NEW", len(new_books), key_parts[1])
 
     # handle badge and reputation changes
     r = Reputation(user)
-    r.new_ebooks(new_ebook_count)
+    r.new_ebooks(len(new_books))
     r.earn_badges()
     msgs = r.get_new_badges()
 
     # query books missing from S3 and supply back to the client
-    rs = DataStore.get_missing_books(username=user.username)
+    missing_books = DataStore.get_missing_books(username=user.username)
     return json.dumps({
-        'ebooks_to_upload': rs,
+        'new_books': new_books,
+        'ebooks_to_upload': missing_books,
         'messages': msgs
     })
+
+
+@app.route("/confirm/<auth_key>", methods=['POST'])
+def confirm(auth_key):
+    # authenticate user
+    key_parts = base64.b64decode(str(auth_key), "_-").split("+")
+    user = User.validate_auth_key(
+        username=key_parts[0],
+        api_key=key_parts[1]
+    )
+    if user is None:
+        raise Forbidden
+
+    # update a file's md5 hash
+    current_file_md5 = request.form.get("file_md5")
+    updated_file_md5 = request.form.get("new_md5")
+
+    if DataStore.update_book_md5(current_file_md5, updated_file_md5):
+        return "ok"
+    else:
+        return "fail"
 
 
 @app.route("/upload/<auth_key>", methods=['POST'])
@@ -159,18 +181,20 @@ def upload(auth_key):
     # stats log the upload
     Log.create(user.id, "UPLOADED", 1, key_parts[1])
 
-    print key_parts[1], request.form.get("sdb_key"), request.files['ebook'].content_length
+    print key_parts[1], request.form.get("pk"), request.files['ebook'].content_length
 
     # write uploaded ebook to disk, named as the hash and filetype
-    uploads.save(request.files['ebook'], None, "%s.%s" % (request.form.get("filemd5"), request.form.get("format")))
+    uploads.save(request.files['ebook'], None, "{0}.{1}".format(
+        request.form.get("file_md5"), request.form.get("format")
+    ))
 
     # let celery process the upload
-    res = store_ebook.delay(user.id,
-                            request.form.get("sdb_key"),
-                            request.form.get("authortitle"),
-                            request.form.get("filemd5"),
-                            request.form.get("version"),
-                            request.form.get("format"))
+    res = store_ebook.delay(
+        user_id=user.id,
+        ebook_id=request.form.get("ebook_id"),
+        file_md5=request.form.get("file_md5"),
+        fmt=request.form.get("format")
+    )
     return res.task_id
 
 

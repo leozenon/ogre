@@ -61,7 +61,7 @@ if os.path.exists(app.config['WHOOSH_BASE']):
 else:
     os.makedirs(app.config['WHOOSH_BASE'])
     schema = Schema(
-        sdb_key=TEXT(stored=True),
+        ebook_id=TEXT(stored=True),
         author=TEXT(stored=True),
         title=TEXT(stored=True)
     #    content=TEXT TODO extract and index all book content!
