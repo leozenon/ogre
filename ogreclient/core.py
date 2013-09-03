@@ -1,9 +1,14 @@
 from __future__ import division
 
+import contextlib
 import json
 import os
+import random
+import shutil
+import string
 import subprocess
 import sys
+import tempfile
 
 import urllib
 import urllib2
@@ -14,6 +19,15 @@ from utils import compute_md5
 
 PROGBAR_LEN = 30
 OGRESERVER = "ogre.oii.me.uk"
+
+# ranked ebook formats
+EBOOK_FORMATS = {
+    'mobi': 1,
+    'azw3': 2,
+    'azw': 3,
+    'pdf': 4,
+    'epub': 5,
+}
 
 
 def doit(ebook_home, username, password,
@@ -42,8 +56,15 @@ def doit(ebook_home, username, password,
         f = urllib2.urlopen(req)
         api_key = f.read()
 
-    except (HTTPError, URLError), e:
-        print "Something went wrong, contact tha spodz with..\nCode egg: %s" % e
+    except HTTPError as e:
+        if e.getcode() == 403:
+            print "Permission denied. This is a private system."
+            sys.exit(2)
+        else:
+            print "Something went wrong, contact tha spodz with..\nCode egg: {0}".format(e)
+            sys.exit(1)
+    except URLError as e:
+        print "Something went wrong, contact tha spodz with..\nCode egg: {0}".format(e)
         sys.exit(1)
 
     ebooks = []
@@ -52,8 +73,9 @@ def doit(ebook_home, username, password,
     # a relatively quick search for all ebooks
     for root, dirs, files in os.walk(ebook_home):
         for filename in files:
+            # TODO use timeit; compare to fnmatch.filter
             fn, ext = os.path.splitext(filename)
-            if ext == ".epub" or ext == ".mobi" or ext == ".azw" or ext == ".pdf":
+            if ext[1:] in EBOOK_FORMATS.keys():
                 filepath = os.path.join(root, filename)
                 md5_tup = compute_md5(filepath)
                 ebooks.append(
@@ -75,12 +97,11 @@ def doit(ebook_home, username, password,
 
         # now parse all book meta data; building a complete dataset
         for item in ebooks:
-            meta = subprocess.check_output(
-                [calibre_ebook_meta_bin, item[0]],
-                stderr=subprocess.STDOUT
+            extracted = subprocess.check_output(
+                [calibre_ebook_meta_bin, item[0]], stderr=subprocess.STDOUT
             )
 
-            if meta.find("EPubException") > 0:
+            if extracted.find("EPubException") > 0:
                 # remove any corrupt
                 errors.append(("Corrupt ebook", item[1] + item[2]))
                 continue
@@ -100,19 +121,63 @@ def doit(ebook_home, username, password,
                 #    errors.append(("DRM addled ebook", item[1] + item[2]))
                 #    continue
 
-            # parse author/title
-            lines = meta.split("\n")
-            for line in lines:
-                if "Title" in line:
-                    title = line[22:]
+            # initialize all the metadata we attempt to extract
+            meta = {}
+            for prop in ('title', 'author', 'firstname', 'lastname', 'publisher',
+                         'published', 'tags', 'isbn', 'asin', 'uri', 'ogre_id', 'dedrm'):
+                meta[prop] = None
 
-                if "Author" in line:
-                    author = line[22:]
-                    cut = author.find(" [")
-                    if(cut > -1):
-                        author = author[0:cut]
+            for line in extracted.splitlines():
+                # extract the simple metadata
+                for prop in ('title', 'publisher', 'published'):
+                    if line.lower().startswith(prop):
+                        meta[prop] = line[line.find(':')+1:].strip()
 
-            authortitle = "%s - %s" % (author, title)
+                if 'Tags' in line:
+                    meta['tags'] = line[line.find(':')+1:].strip()
+
+                    # extract the ogre_id which may be embedded into the tags field
+                    if 'ogre_id' in meta['tags']:
+                        tags = meta['tags'].split(', ')
+                        for j in reversed(xrange(len(tags))):
+                            if 'ogre_id' in tags[j]:
+                                meta['ogre_id'] = tags[j][8:]
+                                del(tags[j])
+                        meta['tags'] = ', '.join(tags)
+
+                    # extract the DeDRM flag
+                    #if 'DeDRM' in meta['tags']:
+                    #    import pdb;pdb.set_trace()
+                    #    tags = meta['tags'].split(', ')
+                    #    for j in reversed(xrange(len(tags))):
+                    #        if 'DeDRM' in tags[j]:
+                    #            meta['dedrm'] = tags[j][6:]
+                    #            del(tags[j])
+                    #    meta['tags'] = ', '.join(tags)
+
+                if 'Author' in line:
+                    meta['author'] = line[line.find(':')+1:].strip()
+                    bracketpos = meta['author'].find('[')
+                    if(bracketpos > -1):
+                        commapos = meta['author'].find(',', bracketpos)
+                        meta['lastname'] = meta['author'][bracketpos+1:commapos]
+                        meta['firstname'] = meta['author'][commapos+1:-1].strip()
+                        meta['author'] = meta['author'][0:bracketpos].strip()
+
+                if 'Identifiers' in line:
+                    identifiers = line[line.find(':')+1:].strip()
+                    for ident in identifiers.split(","):
+                        if ident.startswith("isbn"):
+                            meta['isbn'] = ident[5:].strip()
+                        if ident.startswith("mobi-asin"):
+                            meta['asin'] = ident[9:].strip()
+                        if ident.startswith("uri"):
+                            meta['uri'] = ident[3:].strip()
+                        if ident.startswith("epubbud"):
+                            meta['uri'] = ident[7:].strip()
+
+            # books are indexed by "authortitle" to handle multiple copies of the same book
+            authortitle = "{0} - {1}".format(meta['author'], meta['title'])
 
             # check for duplicates
             if authortitle in ebooks_dict.keys() and item[2] in ebooks_dict[authortitle].keys():
@@ -120,40 +185,48 @@ def doit(ebook_home, username, password,
                 pass
             else:
                 # write file path to ogre cache
+                # TODO move this to where the ogre_id gets confirmed
                 f_ogre_cache.write("%s\n" % item[0])
 
-                if authortitle not in ebooks_dict.keys():
+                # another format of same book found
+                write = False
+
+                if authortitle in ebooks_dict.keys():
+                    # compare the rank of the format already found against this one
+                    existing_rank = EBOOK_FORMATS[ebooks_dict[authortitle]['format']]
+                    new_rank = EBOOK_FORMATS[item[2][1:]]
+
+                    # lower is better
+                    if new_rank < existing_rank:
+                        write = True
+
+                    # upload in favoured formats: mobi, azw, pdf, epub
+                    #if ebooks_dict[authortitle]['format'] == "epub" and item[2][1:] in ('mobi', 'azw3', 'azw', 'pdf'):
+                    #    write = True
+                    #elif ebooks_dict[authortitle]['format'] == "pdf" and item[2][1:] in ('mobi', 'azw3', 'azw'):
+                    #    write = True
+                    #elif ebooks_dict[authortitle]['format'] == "pdf" and item[2][1:] in ('mobi', 'azw3'):
+                    #    write = True
+                    #elif ebooks_dict[authortitle]['format'] == "awz" and item[2][1:] in ('mobi'):
+                    #    write = True
+                else:
+                    # new book found
+                    write = True
+
+                if write:
                     ebooks_dict[authortitle] = {
                         'path': item[0],
                         'filename': item[1],
                         'format': item[2][1:],
                         'size': item[3],
-                        'filemd5': item[4],
+                        'file_md5': item[4],
                         'owner': username,
                     }
-                else:
-                    overwrite = False
-
-                    # upload in favoured formats: mobi, azw, pdf, epub
-                    if ebooks_dict[authortitle]['format'] == "epub" and item[2][1:] in ('mobi', 'azw', 'pdf'):
-                        overwrite = True
-                    elif ebooks_dict[authortitle]['format'] == "pdf" and item[2][1:] in ('mobi', 'azw'):
-                        overwrite = True
-                    elif ebooks_dict[authortitle]['format'] == "awz" and item[2][1:] == "mobi":
-                        overwrite = True
-
-                    if overwrite:
-                        ebooks_dict[authortitle] = {
-                            'path': item[0],
-                            'filename': item[1],
-                            'format': item[2][1:],
-                            'size': item[3],
-                            'filemd5': item[4],
-                            'owner': username,
-                        }
+                    # merge all the meta data constructed above
+                    ebooks_dict[authortitle].update(meta)
 
             i += 1
-            update_progress(i / total)
+            update_progress(float(i) / float(total))
 
     sys.stdout.flush()
 
@@ -209,19 +282,65 @@ def doit(ebook_home, username, password,
         print "Nothing to upload.."
         sys.exit(1)
 
-    elif len(response['ebooks_to_upload']) > 1:
-        # grammatically correct messages are nice
-        plural = "s"
-    else:
-        plural = ""
+    # grammatically correct messages are nice
+    plural = "s" if len(response['ebooks_to_upload']) > 1 else ""
 
     print "Uploading %s file%s. Go make a brew." % (str(len(response['ebooks_to_upload'])), plural)
 
-    # iterate all user's found books
-    for authortitle in ebooks_dict.keys():
-        # upload each requested by the server
-        for upload in response['ebooks_to_upload']:
-            if upload['filemd5'] == ebooks_dict[authortitle]['filemd5']:
+    # tag each book with ogre supplied ebook_id
+    for newbook in response['new_books']:
+        # find this book in the scan data
+        for authortitle in ebooks_dict.keys():
+            if newbook['file_md5'] == ebooks_dict[authortitle]['file_md5']:
+                # append ogre's ebook_id to the tags list
+                if 'tags' in ebooks_dict[authortitle]:
+                    new_tags = "{0}, ogre_id={1}".format(
+                        ebooks_dict[authortitle]['tags'], newbook['ebook_id']
+                    )
+                else:
+                    new_tags = "ogre_id={0}".format(newbook['ebook_id'])
+
+                with make_temp_directory() as temp_dir:
+                    # copy the ebook to a temp file
+                    tmp_name = "{0}.{1}".format(
+                        os.path.join(temp_dir, id_generator()), 
+                        ebooks_dict[authortitle]['format']
+                    )
+                    shutil.copy(newbook['path'], tmp_name)
+                    # write new tags
+                    subprocess.check_output(
+                        [calibre_ebook_meta_bin, tmp_name, '--tags', new_tags]
+                    )
+                    # calculate new MD5
+                    md5 = compute_md5(tmp_name)[0]
+                    try:
+                        # ping ogreserver with the book's new hash
+                        req = urllib2.Request(
+                            url='http://{0}/confirm/{1}'.format(
+                                OGRESERVER,
+                                urllib.quote_plus(api_key)
+                            )
+                        )
+                        req.add_data(urllib.urlencode({
+                            'file_md5': newbook['file_md5'],
+                            'new_md5': md5
+                        }))
+                        resp = urllib2.urlopen(req)
+                        data = resp.read()
+
+                        if data == "ok":
+                            # move file back into place
+                            shutil.copy(tmp_name, newbook['path'])
+
+                    except (HTTPError, URLError) as e:
+                        # TODO
+                        pass
+
+    # upload each requested by the server
+    for upload in response['ebooks_to_upload']:
+        # iterate all user's found books
+        for authortitle in ebooks_dict.keys():
+            if upload['file_md5'] == ebooks_dict[authortitle]['file_md5']:
                 try:
                     f = open(ebooks_dict[authortitle]['path'], "rb")
 
@@ -230,14 +349,14 @@ def doit(ebook_home, username, password,
 
                     # build the post params
                     params = {
-                        'sdb_key': upload['sdb_key'],
-                        'authortitle': upload['authortitle'].encode("UTF-8"),
-                        'filemd5': upload['filemd5'],
-                        'version': upload['version'],
+                        'ebook_id': upload['ebook_id'],
+                        'file_md5': upload['file_md5'],
                         'format': upload['format'],
                         'ebook': f,
                     }
-                    req = opener.open("http://%s/upload/%s" % (OGRESERVER, urllib.quote_plus(api_key)), params)
+                    req = opener.open(
+                        "http://{0}/upload/{1}".format(OGRESERVER, urllib.quote_plus(api_key)), params
+                    )
                     data = req.read()
 
                     print data
@@ -251,6 +370,17 @@ def doit(ebook_home, username, password,
                     f.close()
 
     return
+
+
+@contextlib.contextmanager
+def make_temp_directory():
+    temp_dir = tempfile.mkdtemp()
+    yield temp_dir
+    shutil.rmtree(temp_dir)
+
+
+def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
+    return ''.join(random.choice(chars) for x in range(size))
 
 
 def update_progress(p):
