@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 import argparse
 import getpass
 import json
@@ -11,7 +9,7 @@ import tempfile
 from core import doit
 
 
-def main():
+def entrypoint():
     # run some checks and create some config variables
     conf = prerequisites()
 
@@ -101,7 +99,7 @@ def prerequisites():
     # create a config directory in $HOME on first run
     if not os.path.exists(config_dir):
         print ("Please note that DRM scanning means the first run of ogreclient "
-                "will be much slower than subsequent runs.")
+               "will be much slower than subsequent runs.")
         os.makedirs(config_dir)
 
         # locate calibre's binaries
@@ -114,6 +112,7 @@ def prerequisites():
                 raise Exception
         except:
             sys.stderr.write("You must install calibre in order to use ogreclient.")
+            sys.stderr.write("Please follow the simple instructions at http://ogre.oii.yt/install")
             sys.exit(1)
 
         conf = {
@@ -134,6 +133,3 @@ def prerequisites():
     conf['ebook_cache_temp_path'] = ebook_cache_temp_path
     conf['ebook_convert_path'] = ebook_convert_path
     return conf
-
-if __name__ == "__main__":
-    main()

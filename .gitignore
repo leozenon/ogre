@@ -1,5 +1,10 @@
-.DS_Store
+build/
+*.cfg
+dist/
+*.egg-info
 *.pyc
+
+.DS_Store
 OGRE_DRM_Tools*.zip
 search.db
 .sass-cache
