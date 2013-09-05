@@ -7,6 +7,7 @@ include:
   - logs
   - mysql
   - nginx
+  - pypiserver
   - rabbitmq
   - rethinkdb
   - salt-hack
@@ -36,6 +37,17 @@ extend:
     file.managed:
       - context:
           worker_class: gevent
+
+  pypiserver-log-dir:
+    file.directory:
+      - user: {{ pillar['app_user'] }}
+      - group: {{ pillar['app_user'] }}
+
+  pypiserver-supervisor-config:
+    file.managed:
+      - context:
+          port: 8233
+          runas: {{ pillar['app_user'] }}
 
 
 pip-dependencies-extra:

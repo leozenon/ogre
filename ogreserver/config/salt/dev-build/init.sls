@@ -39,6 +39,13 @@ extend:
       - context:
           production: false
 
+  pypiserver-supervisor-config:
+    file.managed:
+      - context:
+          port: 8233
+          runas: {{ pillar['app_user'] }}
+          overwrite: true
+
 
 logs-chown:
   file.directory:
