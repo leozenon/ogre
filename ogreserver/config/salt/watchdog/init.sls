@@ -46,4 +46,6 @@ watchdog-{{ service }}-supervisor-config:
         user: {{ pillar['app_user'] }}
     - require:
       - pip: watchdog
+    - require_in:
+      - service: supervisor
 {% endfor %}

@@ -15,12 +15,16 @@ compass-supervisor-config:
     - template: jinja
     - default:
         directory: /srv/{{ pillar['app_name'] }}
+    - require:
+      - gem: compass-gem
+    - require_in:
+      - service: supervisor
 
 compass-supervisor-service:
   supervisord.running:
     - name: {{ pillar['app_name'] }}.compass
     - update: true
     - require:
-      - gem: compass-gem
+      - service: supervisor
     - watch:
       - file: compass-supervisor-config

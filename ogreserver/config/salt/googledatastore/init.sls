@@ -36,13 +36,16 @@ gcd-supervisor-config:
     - template: jinja
     - context:
         directory: /home/{{ pillar['app_user'] }}/gcd-v1beta1-rev2-1.0.1
+    - require:
+      - cmd: gcd-create-datastore
+    - require_in:
+      - service: supervisor
 
 gcd-supervisor-service:
   supervisord.running:
     - name: {{ pillar['app_name'] }}.gcd
     - update: True
     - require:
-      - cmd: gcd-create-datastore
       - service: supervisor
     - watch:
       - file: gcd-supervisor-config

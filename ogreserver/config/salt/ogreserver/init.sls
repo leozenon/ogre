@@ -82,35 +82,41 @@ ogre-init:
   file.managed:
     - source: salt://ogreserver/supervisord.gunicorn.conf
     - template: jinja
+    - require:
+      - user: {{ pillar['app_user'] }}
+      - file: flask-config
+    - require_in:
+      - service: supervisor
 
 gunicorn-service:
   supervisord.running:
     - name: ogreserver.gunicorn
     - update: true
+    - require:
+      - service: supervisor
     - watch:
       - file: /etc/supervisor/conf.d/gunicorn.ogreserver.conf
       - file: /etc/gunicorn.d/{{ pillar['app_name'] }}.conf.py
-    - require:
-      - user: {{ pillar['app_user'] }}
-      - file: flask-config
-      - service: supervisor
 
 
 /etc/supervisor/conf.d/celeryd.ogreserver.conf:
   file.managed:
     - source: salt://ogreserver/supervisord.celeryd.conf
     - template: jinja
+    - require:
+      - user: {{ pillar['app_user'] }}
+      - file: flask-config
+    - require_in:
+      - service: supervisor
 
 celeryd-service:
   supervisord.running:
     - name: ogreserver.celeryd
     - update: true
+    - require:
+      - service: supervisor
     - watch:
       - file: /etc/supervisor/conf.d/celeryd.ogreserver.conf
-    - require:
-      - user: {{ pillar['app_user'] }}
-      - file: flask-config
-      - service: supervisor
 
 
 #/etc/nginx/conf.d/upstream.conf:
