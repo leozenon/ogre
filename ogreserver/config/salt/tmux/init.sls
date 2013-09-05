@@ -10,6 +10,10 @@
 tmux:
   pkg.installed
 
+tmux-stow:
+  pkg.installed:
+    - name: stow
+
 dotfiles-install-tmux:
   cmd.run:
     - name: ./install.sh -f tmux &> /dev/null
@@ -18,6 +22,7 @@ dotfiles-install-tmux:
     - user: {{ pillar['login_user'] }}
     - require:
       - cmd: dotfiles
+      - pkg: tmux-stow
 
 # install tmux-powerline from git
 tmux-powerline-install:

@@ -12,6 +12,7 @@ dev_packages:
       - man-db
       - telnet
       - htop
+      - stow
 
 # install some extra packages
 {% for package_name in pillar.get('extras', []) %}
@@ -21,17 +22,22 @@ extra_{{ package_name }}:
 {% endfor %}
 
 # set the default shell
+shell-{{ pillar['shell'] }}:
+  pkg.installed:
+    - name: {{ pillar['shell'] }}
+
 modify-login-user:
   user.present:
     - name: {{ pillar['login_user'] }}
     - shell: /bin/{{ pillar['shell'] }}
     - unless: getent passwd $LOGNAME | grep {{ pillar['shell'] }}
+    - require:
+      - pkg: shell-{{ pillar['shell'] }}
 
 # grab the user's dotfiles
 dotfiles:
   git.latest:
     - name: git@github.com:{{ pillar['github_username'] }}/dotfiles.git
-    - rev: master
     - target: /home/{{ pillar['login_user'] }}/dotfiles
     - user: {{ pillar['login_user'] }}
     - require:
@@ -54,6 +60,7 @@ dotfiles-install-vim:
     - user: {{ pillar['login_user'] }}
     - require:
       - cmd: dotfiles
+      - pkg: dev_packages
 
 # prevent ~/.viminfo being owned by root
 viminfo-touch:
@@ -73,6 +80,7 @@ dotfiles-install-zsh:
     - user: {{ pillar['login_user'] }}
     - require:
       - cmd: dotfiles
+      - pkg: dev_packages
 {% endif %}
 
 {% if 'git' in pillar.get('extras', []) %}
@@ -87,4 +95,5 @@ dotfiles-install-git:
       - file: viminfo-touch
       {% endif %}
       - cmd: dotfiles
+      - pkg: dev_packages
 {% endif %}
