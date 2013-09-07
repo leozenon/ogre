@@ -118,6 +118,7 @@ gunicorn-service:
     - require:
       - user: {{ pillar['app_user'] }}
       - file: flask-config
+      - cmd: rabbitmq-server-running
     - require_in:
       - service: supervisor
 
