@@ -40,15 +40,10 @@ dotfiles:
     - name: git@github.com:{{ pillar['github_username'] }}/dotfiles.git
     - target: /home/{{ pillar['login_user'] }}/dotfiles
     - user: {{ pillar['login_user'] }}
+    - submodules: true
     - require:
       - pkg: git
       - file: github.pky
-  cmd.wait:
-    - name: git submodule update --init
-    - cwd: /home/{{ pillar['login_user'] }}/dotfiles
-    - user: {{ pillar['login_user'] }}
-    - watch:
-      - git: dotfiles
 
 # run dotfiles install scripts
 {% if 'vim' in pillar.get('extras', []) %}
@@ -59,7 +54,7 @@ dotfiles-install-vim:
     - cwd: /home/{{ pillar['login_user'] }}/dotfiles
     - user: {{ pillar['login_user'] }}
     - require:
-      - cmd: dotfiles
+      - git: dotfiles
       - pkg: dev_packages
 
 # prevent ~/.viminfo being owned by root
@@ -79,7 +74,7 @@ dotfiles-install-zsh:
     - cwd: /home/{{ pillar['login_user'] }}/dotfiles
     - user: {{ pillar['login_user'] }}
     - require:
-      - cmd: dotfiles
+      - git: dotfiles
       - pkg: dev_packages
 {% endif %}
 
@@ -94,6 +89,6 @@ dotfiles-install-git:
       {% if 'vim' in pillar.get('extras', []) %}
       - file: viminfo-touch
       {% endif %}
-      - cmd: dotfiles
+      - git: dotfiles
       - pkg: dev_packages
 {% endif %}

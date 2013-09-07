@@ -21,7 +21,7 @@ dotfiles-install-tmux:
     - cwd: /home/{{ pillar['login_user'] }}/dotfiles
     - user: {{ pillar['login_user'] }}
     - require:
-      - cmd: dotfiles
+      - git: dotfiles
       - pkg: tmux-stow
 
 # install tmux-powerline from git
