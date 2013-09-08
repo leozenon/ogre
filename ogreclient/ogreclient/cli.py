@@ -15,32 +15,35 @@ def entrypoint():
 
     parser = argparse.ArgumentParser(description="O.G.R.E. client application")
     parser.add_argument(
-        '--ebook-home', '-H', action="store", dest="ebook_home",
+        '--ebook-home', '-H',
         help=("The directory where you keep your ebooks. "
               "You can also set the environment variable $EBOOK_HOME"))
     parser.add_argument(
-        '--ogreserver', action="store", dest="ogreserver",
+        '--ogreserver',
         help="Override the default server host of oii.ogre.me.uk")
     parser.add_argument(
-        '--username', '-u', action="store", dest="username",
+        '--username', '-u',
         help=("Your O.G.R.E. username. "
               "You can also set the environment variable $EBOOK_USER"))
     parser.add_argument(
-        '--password', '-p', action="store", dest="password",
+        '--password', '-p',
         help=("Your O.G.R.E. password. "
               "You can also set the environment variable $EBOOK_PASS"))
 
     parser.add_argument(
-        '--verbose', '-v', action="store_true", dest="verbose",
-        help="Produce more output")
+        '--verbose', '-v', action="store_true",
+        help="Produce lots of output")
     parser.add_argument(
-        '--quiet', '-q', action="store_true", dest="quiet",
+        '--quiet', '-q', action="store_true",
         help="Don't produce any output")
     parser.add_argument(
-        '--dry-run', '-d', action="store_true", dest="dry_run",
+        '--dry-run', '-d', action="store_true",
         help="Dry run the sync; don't actually upload anything to the server")
 
     args = parser.parse_args()
+
+    if args.verbose and args.quiet:
+        parser.error("You cannot specify --verbose and --quiet together!")
 
     ebook_home = args.ebook_home
     username = args.username
