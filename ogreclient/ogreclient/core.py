@@ -1,14 +1,10 @@
 from __future__ import division
 
-import contextlib
 import json
 import os
-import random
 import shutil
-import string
 import subprocess
 import sys
-import tempfile
 
 import urllib
 import urllib2
@@ -16,6 +12,10 @@ from urllib2 import HTTPError, URLError
 from urllib2_file import newHTTPHandler
 
 from utils import compute_md5
+from utils import id_generator
+from utils import make_temp_directory
+from utils import update_progress
+
 
 PROGBAR_LEN = 30
 OGRESERVER = "ogre.oii.me.uk"
@@ -89,7 +89,7 @@ def doit(ebook_home, username, password,
         sys.exit(1)
 
     print "Scanning ebook meta data and checking DRM.."
-    update_progress(0)
+    update_progress(0, length=PROGBAR_LEN)
     ebooks_dict = {}
 
     # write good ebooks into the local ogre cache to skip DRM test next run
@@ -226,7 +226,7 @@ def doit(ebook_home, username, password,
                     ebooks_dict[authortitle].update(meta)
 
             i += 1
-            update_progress(float(i) / float(total))
+            update_progress(float(i) / float(total), length=PROGBAR_LEN)
 
     sys.stdout.flush()
 
@@ -370,22 +370,6 @@ def doit(ebook_home, username, password,
                     f.close()
 
     return
-
-
-@contextlib.contextmanager
-def make_temp_directory():
-    temp_dir = tempfile.mkdtemp()
-    yield temp_dir
-    shutil.rmtree(temp_dir)
-
-
-def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
-    return ''.join(random.choice(chars) for x in range(size))
-
-
-def update_progress(p):
-    i = round(p * 100, 1)
-    sys.stdout.write("\r[{0}{1}] {2}%".format("#" * int(p * PROGBAR_LEN), " " * (PROGBAR_LEN - int(p * PROGBAR_LEN)), i))
 
 
 def test_drm(filepath, fmt):

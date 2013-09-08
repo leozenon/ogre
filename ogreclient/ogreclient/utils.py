@@ -1,5 +1,12 @@
-from hashlib import md5
 import base64
+import contextlib
+import hashlib
+import random
+import shutil
+import string
+import sys
+import tempfile
+
 
 def compute_md5(filepath, buf_size=8192):
     """
@@ -23,7 +30,7 @@ def compute_md5(filepath, buf_size=8192):
     """
     fp = open(filepath, "rb")
     try:
-        m = md5()
+        m = hashlib.md5()
         fp.seek(0)
         s = fp.read(buf_size)
         while s:
@@ -42,3 +49,19 @@ def compute_md5(filepath, buf_size=8192):
 
     finally:
         fp.close()
+
+
+@contextlib.contextmanager
+def make_temp_directory():
+    temp_dir = tempfile.mkdtemp()
+    yield temp_dir
+    shutil.rmtree(temp_dir)
+
+
+def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
+    return ''.join(random.choice(chars) for x in range(size))
+
+
+def update_progress(p, length=30):
+    i = round(p * 100, 1)
+    sys.stdout.write("\r[{0}{1}] {2}%".format("#" * int(p * length), " " * (length - int(p * length)), i))
