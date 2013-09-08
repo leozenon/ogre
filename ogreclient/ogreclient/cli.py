@@ -4,9 +4,10 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
 
 from core import doit
+
+from utils import make_temp_directory
 
 
 def entrypoint():
@@ -80,14 +81,16 @@ def entrypoint():
             if len(password) == 0:
                 sys.exit(1)
 
-    doit(ebook_home, username, password,
-        ogreserver=args.ogreserver,
-        config_dir=conf['config_dir'],
-        ebook_cache_path=conf['ebook_cache_path'],
-        ebook_cache_temp_path=conf['ebook_cache_temp_path'],
-        ebook_convert_path=conf['ebook_convert_path'],
-        calibre_ebook_meta_bin=conf['calibre_ebook_meta_bin']
-    )
+    # setup a temp path for DRM checks with ebook-convert
+    with make_temp_directory() as ebook_convert_path:
+        doit(ebook_home, username, password,
+            ogreserver=args.ogreserver,
+            config_dir=conf['config_dir'],
+            ebook_cache_path=conf['ebook_cache_path'],
+            ebook_cache_temp_path=conf['ebook_cache_temp_path'],
+            ebook_convert_path=ebook_convert_path,
+            calibre_ebook_meta_bin=conf['calibre_ebook_meta_bin']
+        )
 
 
 def prerequisites():
@@ -95,9 +98,6 @@ def prerequisites():
     config_dir = "{0}/{1}".format(os.environ.get('XDG_CONFIG_HOME', os.path.expanduser('~/.config')), "ogre")
     ebook_cache_path = "{0}/ebook_cache".format(config_dir)
     ebook_cache_temp_path = "{0}/ebook_cache.tmp".format(config_dir)
-
-    # setup a temp path for DRM checks with ebook-convert
-    ebook_convert_path = "{0}/egg.epub".format(tempfile.gettempdir())
 
     # create a config directory in $HOME on first run
     if not os.path.exists(config_dir):
@@ -134,5 +134,4 @@ def prerequisites():
     conf['config_dir'] = config_dir
     conf['ebook_cache_path'] = ebook_cache_path
     conf['ebook_cache_temp_path'] = ebook_cache_temp_path
-    conf['ebook_convert_path'] = ebook_convert_path
     return conf
