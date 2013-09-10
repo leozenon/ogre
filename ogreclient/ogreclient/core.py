@@ -30,10 +30,46 @@ EBOOK_FORMATS = {
 }
 
 
+ERROR_AUTH = 1
+ERROR_BACON = 2
+ERROR_MUSHROOM = 4
+ERROR_SPINACH = 8
+AUTH_DENIED = 16
+NO_EBOOKS = 32
+NO_UPLOADS = 64
+
+last_error = None
+
+def authenticate(username, password):
+    global last_error
+    try:
+        # authenticate the user; retrieve an session_key for subsequent requests
+        params = urllib.urlencode({
+            'username': username,
+            'password': password
+        })
+        req = urllib2.Request(url='http://{0}/auth'.format(OGRESERVER), data=params)
+        print req.get_full_url()
+        f = urllib2.urlopen(req)
+        return f.read()
+
+    except HTTPError as e:
+        if e.getcode() == 403:
+            return AUTH_DENIED
+        else:
+            last_error = e
+            return ERROR_AUTH
+    except URLError as e:
+        last_error = e
+        return ERROR_AUTH
+
+
 def doit(ebook_home, username, password,
          ogreserver=None, config_dir=None, ebook_cache_path=None,
          ebook_cache_temp_path=None, ebook_convert_path=None,
          calibre_ebook_meta_bin=None):
+
+    global last_error
 
     if ogreserver is not None:
         OGRESERVER = ogreserver
@@ -45,27 +81,12 @@ def doit(ebook_home, username, password,
         with open(ebook_cache_path, "r") as f:
             ebook_cache = f.read().splitlines()
 
-    try:
-        # authenticate the user; retrieve an api_key for subsequent requests
-        params = urllib.urlencode({
-            'username': username,
-            'password': password
-        })
-        req = urllib2.Request(url='http://{0}/auth'.format(OGRESERVER), data=params)
-        print req.get_full_url()
-        f = urllib2.urlopen(req)
-        api_key = f.read()
-
-    except HTTPError as e:
-        if e.getcode() == 403:
-            print "Permission denied. This is a private system."
-            sys.exit(2)
-        else:
-            print "Something went wrong, contact tha spodz with..\nCode egg: {0}".format(e)
-            sys.exit(1)
-    except URLError as e:
-        print "Something went wrong, contact tha spodz with..\nCode egg: {0}".format(e)
-        sys.exit(1)
+    # authenticate user and generate session API key
+    ret = authenticate(username, password)
+    if ret in (ERROR_AUTH, AUTH_DENIED):
+        return ret
+    else:
+        session_key = ret
 
     ebooks = []
     errors = []
@@ -85,8 +106,7 @@ def doit(ebook_home, username, password,
     i = 0
     total = len(ebooks)
     if total == 0:
-        print "No ebooks found. Is $EBOOK_HOME set correctly?"
-        sys.exit(1)
+        return NO_EBOOKS
 
     print "Scanning ebook meta data and checking DRM.."
     update_progress(0, length=PROGBAR_LEN)
@@ -253,7 +273,7 @@ def doit(ebook_home, username, password,
         req = urllib2.Request(
             url='http://{0}/post/{1}'.format(
                 OGRESERVER,
-                urllib.quote_plus(api_key)
+                urllib.quote_plus(session_key)
             )
         )
         print req.get_full_url()
@@ -264,12 +284,11 @@ def doit(ebook_home, username, password,
         response = json.loads(data)
 
     except ValueError as e:
-        print "Something went wrong, contact tha spodz with..\nCode bacon: %s" % e
-        sys.exit(1)
-
+        last_error = e
+        return ERROR_BACON
     except (HTTPError, URLError) as e:
-        print "Something went wrong, contact tha spodz with..\nCode mushroom: %s" % e
-        sys.exit(1)
+        last_error = e
+        return ERROR_MUSHROOM
 
     # print server messages
     for msg in response['messages']:
@@ -279,8 +298,7 @@ def doit(ebook_home, username, password,
             print msg
 
     if len(response['ebooks_to_upload']) == 0:
-        print "Nothing to upload.."
-        sys.exit(1)
+        return NO_UPLOADS
 
     # grammatically correct messages are nice
     plural = "s" if len(response['ebooks_to_upload']) > 1 else ""
@@ -318,7 +336,7 @@ def doit(ebook_home, username, password,
                         req = urllib2.Request(
                             url='http://{0}/confirm/{1}'.format(
                                 OGRESERVER,
-                                urllib.quote_plus(api_key)
+                                urllib.quote_plus(session_key)
                             )
                         )
                         req.add_data(urllib.urlencode({
@@ -355,26 +373,18 @@ def doit(ebook_home, username, password,
                         'ebook': f,
                     }
                     req = opener.open(
-                        "http://{0}/upload/{1}".format(OGRESERVER, urllib.quote_plus(api_key)), params
+                        "http://{0}/upload/{1}".format(OGRESERVER, urllib.quote_plus(session_key)), params
                     )
                     data = req.read()
 
                     print data
 
                 except (HTTPError, URLError), e:
-                    print "Something went wrong, contact tha spodz with..\nCode spinach: %s" % e
-                    sys.exit(1)
+                    last_error = e
+                    return ERROR_SPINACH
                 except IOError, e:
                     continue
                 finally:
                     f.close()
 
     return
-
-
-def test_drm(filepath, fmt):
-    pass
-    #if fmt == "epub":
-    #    from epub_input import EPUBInput
-    #    epub = EPUBInput()
-    #    epub.convert(filepath)

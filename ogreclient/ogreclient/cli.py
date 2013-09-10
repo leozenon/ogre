@@ -5,7 +5,7 @@ import os
 import subprocess
 import sys
 
-from core import doit
+import core
 
 from utils import make_temp_directory
 
@@ -83,7 +83,7 @@ def entrypoint():
 
     # setup a temp path for DRM checks with ebook-convert
     with make_temp_directory() as ebook_convert_path:
-        doit(ebook_home, username, password,
+        ret = core.doit(ebook_home, username, password,
             ogreserver=args.ogreserver,
             config_dir=conf['config_dir'],
             ebook_cache_path=conf['ebook_cache_path'],
@@ -91,6 +91,26 @@ def entrypoint():
             ebook_convert_path=ebook_convert_path,
             calibre_ebook_meta_bin=conf['calibre_ebook_meta_bin']
         )
+
+    # exit program
+    if ret > 0:
+        if ret == core.ERROR_AUTH:
+            msg = "Something went wrong, contact tha spodz with..\nCode egg: {0}".format(core.last_error)
+        elif ret == core.ERROR_BACON:
+            msg = "Something went wrong, contact tha spodz with..\nCode bacon: {0}".format(core.last_error)
+        elif ret == core.ERROR_MUSHROOM:
+            msg = "Something went wrong, contact tha spodz with..\nCode mushroom: {0}".format(core.last_error)
+        elif ret == core.ERROR_SPINACH:
+            msg = "Something went wrong, contact tha spodz with..\nCode spinach: {0}".format(core.last_error)
+        elif ret == core.AUTH_DENIED:
+            msg = "Permission denied. This is a private system."
+        elif ret == core.NO_EBOOKS:
+            msg = "No ebooks found. Is $EBOOK_HOME set correctly?"
+        elif ret == core.NO_UPLOADS:
+            msg = "Nothing to upload.."
+
+        sys.stderr.write("{0}\n".format(msg))
+        sys.exit(ret)
 
 
 def prerequisites():
