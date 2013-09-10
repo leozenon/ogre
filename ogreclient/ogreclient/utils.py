@@ -65,3 +65,21 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
 def update_progress(p, length=30):
     i = round(p * 100, 1)
     sys.stdout.write("\r[{0}{1}] {2}%".format("#" * int(p * length), " " * (length - int(p * length)), i))
+
+
+@contextlib.contextmanager
+def capture():
+    import sys, codecs
+    from cStringIO import StringIO
+    oldout, olderr = sys.stdout, sys.stderr
+    try:
+        out = [
+            codecs.getwriter("utf8")(StringIO()),
+            codecs.getwriter("utf8")(StringIO()),
+        ]
+        sys.stdout, sys.stderr = out
+        yield out
+    finally:
+        sys.stdout, sys.stderr = oldout, olderr
+        out[0] = out[0].getvalue()
+        out[1] = out[1].getvalue()

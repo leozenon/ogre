@@ -4,16 +4,16 @@ import json
 import os
 import subprocess
 import sys
+import urllib
 
 import core
 
+from utils import capture
 from utils import make_temp_directory
+from utils import update_progress
 
 
 def entrypoint():
-    # run some checks and create some config variables
-    conf = prerequisites()
-
     parser = argparse.ArgumentParser(description="O.G.R.E. client application")
     parser.add_argument(
         '--ebook-home', '-H',
@@ -81,6 +81,9 @@ def entrypoint():
             if len(password) == 0:
                 sys.exit(1)
 
+    # run some checks and create some config variables
+    conf = prerequisites(args.ogreserver, username, password)
+
     # setup a temp path for DRM checks with ebook-convert
     with make_temp_directory() as ebook_convert_path:
         ret = core.doit(ebook_home, username, password,
@@ -113,7 +116,7 @@ def entrypoint():
         sys.exit(ret)
 
 
-def prerequisites():
+def prerequisites(ogreserver, username, password):
     # setup some ebook cache file paths
     config_dir = "{0}/{1}".format(os.environ.get('XDG_CONFIG_HOME', os.path.expanduser('~/.config')), "ogre")
     ebook_cache_path = "{0}/ebook_cache".format(config_dir)
@@ -150,8 +153,71 @@ def prerequisites():
         with open("{0}/app.config".format(config_dir), "r") as f_config:
             conf = json.loads(f_config.read())
 
+    if ogreserver is None:
+        ogreserver = core.OGRESERVER
+
+    try:
+        import dedrm
+        print "Initialized DRM tools v{0}".format(dedrm.PLUGIN_VERSION)
+
+        # extract the Kindle key
+        kindlekeyfile = os.path.join(config_dir, 'kindlekey.k4i')
+        if not os.path.exists(kindlekeyfile):
+            import dedrm.kindlekey
+            with capture() as out:
+                dedrm.kindlekey.getkey(kindlekeyfile)
+
+            for line in out:
+                if 'K4PC' in line:
+                    print "Extracted Kindle4PC key"
+                    break
+                elif 'k4Mac' in line:
+                    print "Extracted Kindle4Mac key"
+                    break
+
+        # extract the Adobe key
+        adeptkeyfile = os.path.join(config_dir, 'adeptkey.der')
+        if not os.path.exists(adeptkeyfile):
+            import dedrm.adobekey
+            with capture() as out:
+                dedrm.adobekey.getkey(adeptkeyfile)
+
+            for line in out:
+                if 'Saved a key' in line:
+                    print "Extracted Adobe DE key"
+                    break
+
+    except ImportError:
+        print "Downloading latest DRM tools"
+
+        # retrieve the DRM tools
+        session_key = core.authenticate(ogreserver, username, password)
+        if type(session_key) is not str:
+            print "Couldn't get DRM tools"
+        else:
+            urllib.urlretrieve(
+                "http://{0}/download-dedrm/{1}".format(ogreserver, session_key),
+                "/tmp/dedrm.tar.gz",
+                dl_progress
+            )
+            print ""
+
+        # install DRM tools
+        subprocess.check_output("pip install /tmp/dedrm.tar.gz", shell=True)
+
+        try:
+            import dedrm
+            print "Initialized DRM tools v{0}".format(dedrm.PLUGIN_VERSION)
+        except ImportError:
+            print "Failed to download DRM tools. Please report this error."
+
     # return config object
     conf['config_dir'] = config_dir
     conf['ebook_cache_path'] = ebook_cache_path
     conf['ebook_cache_temp_path'] = ebook_cache_temp_path
     return conf
+
+
+def dl_progress(count, size, total):
+    progress = float(count * size) / float(total)
+    update_progress(progress if progress < 1 else 1, length=core.PROGBAR_LEN)

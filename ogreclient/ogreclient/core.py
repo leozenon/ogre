@@ -4,13 +4,13 @@ import json
 import os
 import shutil
 import subprocess
-import sys
 
 import urllib
 import urllib2
 from urllib2 import HTTPError, URLError
 from urllib2_file import newHTTPHandler
 
+from utils import capture
 from utils import compute_md5
 from utils import id_generator
 from utils import make_temp_directory
@@ -23,10 +23,14 @@ OGRESERVER = "ogre.oii.yt"
 # ranked ebook formats
 EBOOK_FORMATS = {
     'mobi': 1,
-    'azw3': 2,
-    'azw': 3,
-    'pdf': 4,
-    'epub': 5,
+    'azw': 2,
+    'azw3': 3,
+    'azw4': 4,
+    'pdf': 5,
+    'epub': 6,
+    'pdb': 7,
+    'azw1': 8,
+    'tpz': 9,
 }
 
 
@@ -49,7 +53,6 @@ def authenticate(host, username, password):
             'password': password
         })
         req = urllib2.Request(url='http://{0}/auth'.format(host), data=params)
-        print req.get_full_url()
         f = urllib2.urlopen(req)
         return f.read()
 
@@ -79,7 +82,8 @@ def doit(ebook_home, username, password,
     # load the user's database of previously scanned ebooks
     if os.path.exists(ebook_cache_path):
         with open(ebook_cache_path, "r") as f:
-            ebook_cache = f.read().splitlines()
+            data = f.read()
+            #ebook_cache = json.loads(data)
 
     # authenticate user and generate session API key
     ret = authenticate(ogreserver, username, password)
@@ -96,7 +100,7 @@ def doit(ebook_home, username, password,
         for filename in files:
             # TODO use timeit; compare to fnmatch.filter
             fn, ext = os.path.splitext(filename)
-            if ext[1:] in EBOOK_FORMATS.keys():
+            if ext[1:] in EBOOK_FORMATS.keys() and fn[0:2] != '._':
                 filepath = os.path.join(root, filename)
                 md5_tup = compute_md5(filepath)
                 ebooks.append(
@@ -105,12 +109,22 @@ def doit(ebook_home, username, password,
 
     i = 0
     total = len(ebooks)
+    print "Discovered {0} files".format(total)
     if total == 0:
         return NO_EBOOKS
 
     print "Scanning ebook meta data and checking DRM.."
     update_progress(0, length=PROGBAR_LEN)
     ebooks_dict = {}
+    can_decrypt = None
+
+    try:
+        # import DeDRM libs, capturing anything that's shat out on STDOUT
+        with capture() as out:
+            from dedrm.scriptinterface import decryptepub, decryptpdf, decryptpdb, decryptk4mobi
+        can_decrypt = True
+    except ImportError:
+        can_decrypt = False
 
     # write good ebooks into the local ogre cache to skip DRM test next run
     with open(ebook_cache_temp_path, "w") as f_ogre_cache:
@@ -126,20 +140,71 @@ def doit(ebook_home, username, password,
                 errors.append(("Corrupt ebook", item[1] + item[2]))
                 continue
 
-            # check each ebook path for DRM, if not previously checked
-            #if item[0] not in ebook_cache:
-                #if test_drm(item[0], item[2][1:]):
-                #    print 'okay'
-                #else:
-                #    print 'bad'
-                #try:
-                #    drmtest = subprocess.check_output(['ebook-convert', item[0], ebook_convert_path], stderr=subprocess.STDOUT)
-                #    if drmtest.find("calibre.ebooks.DRMError") > 0:
-                #        # remove any DRM riddled
-                #        raise Exception("DRM addled")
-                #except (Exception, CalledProcessError) as e:
-                #    errors.append(("DRM addled ebook", item[1] + item[2]))
-                #    continue
+            if can_decrypt:
+                try:
+                    out = ""
+                    # attempt to decrypt each book, capturing STDOUT
+                    with capture() as out:
+                        if item[2] == '.epub':
+                            decryptepub(item[0], ebook_convert_path, config_dir)
+                        elif item[2] == '.pdb':
+                            decryptpdb(item[0], ebook_convert_path, config_dir)
+                        elif item[2] in ('.mobi', '.azw', '.azw1', '.azw3', '.azw4', '.tpz'):
+                            decryptk4mobi(item[0], ebook_convert_path, config_dir)
+                        elif item[2] == '.pdf':
+                            decryptpdf(item[0], ebook_convert_path, config_dir)
+
+                    # decryption state of current book
+                    state = DRM.unknown
+
+                    if item[2] == '.epub':
+                        for line in out:
+                            if ' is not DRMed.' in line:
+                                state = DRM.none
+                                break
+                            elif 'Decrypted Adobe ePub' in line:
+                                state = DRM.decrypted
+                                break
+                            elif 'Could not decrypt' in line and 'Wrong key' in line:
+                                state = DRM.wrong_key
+                                break
+                            elif 'Error while trying to fix epub' in line:
+                                state = DRM.corrupt
+                                break
+                    elif item[2] in ('.mobi', '.azw', '.azw1', '.azw3', '.azw4', '.tpz'):
+                        for line in out:
+                            if 'This book is not encrypted.' in line:
+                                state = DRM.none
+                                break
+                            elif 'Decryption succeeded' in line:
+                                state = DRM.decrypted
+                                break
+                            elif 'DrmException: No key found' in line:
+                                state = DRM.wrong_key
+                                break
+                    elif item[2] == '.pdf':
+                        state = DRM.none
+                        for line in out:
+                            if 'Error serializing pdf' in line:
+                                state = DRM.failed
+                                break
+
+                    if state == DRM.none:
+                        print "[NONE] {0}".format(item[0])
+                    elif state == DRM.decrypted:
+                        print "[DRM ] {0}".format(item[0])
+                    elif state == DRM.wrong_key:
+                        print "[DRM ] {0}".format(item[0])
+                    elif state == DRM.failed:
+                        print "[DRM ] {0}".format(item[0])
+                    elif state == DRM.corrupt:
+                        print "[DRM ] {0}".format(item[0])
+                    else:
+                        print "[UNKW] {0}\t{1}".format(item[0], out)
+
+                except Exception as e:
+                    print "Fatal Exception on {0}: {1}".format(item[0], e)
+                    continue
 
             # initialize all the metadata we attempt to extract
             meta = {}
@@ -276,7 +341,6 @@ def doit(ebook_home, username, password,
                 urllib.quote_plus(session_key)
             )
         )
-        print req.get_full_url()
         req.add_data(params)
         resp = urllib2.urlopen(req)
         data = resp.read()
@@ -386,5 +450,3 @@ def doit(ebook_home, username, password,
                     continue
                 finally:
                     f.close()
-
-    return
