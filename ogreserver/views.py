@@ -112,14 +112,7 @@ def dedrm():
 
 @app.route("/post/<auth_key>", methods=['POST'])
 def post(auth_key):
-    # authenticate user
-    key_parts = base64.b64decode(str(auth_key), "_-").split("+")
-    user = User.validate_auth_key(
-        username=key_parts[0],
-        api_key=key_parts[1]
-    )
-    if user is None:
-        raise Forbidden
+    check_auth(auth_key)
 
     # get the json payload
     data = json.loads(request.form.get("ebooks"))
@@ -149,14 +142,7 @@ def post(auth_key):
 
 @app.route("/confirm/<auth_key>", methods=['POST'])
 def confirm(auth_key):
-    # authenticate user
-    key_parts = base64.b64decode(str(auth_key), "_-").split("+")
-    user = User.validate_auth_key(
-        username=key_parts[0],
-        api_key=key_parts[1]
-    )
-    if user is None:
-        raise Forbidden
+    check_auth(auth_key)
 
     # update a file's md5 hash
     current_file_md5 = request.form.get("file_md5")
@@ -170,13 +156,7 @@ def confirm(auth_key):
 
 @app.route("/upload/<auth_key>", methods=['POST'])
 def upload(auth_key):
-    key_parts = base64.b64decode(str(auth_key), "_-").split("+")
-    user = User.validate_auth_key(
-        username=key_parts[0],
-        api_key=key_parts[1]
-    )
-    if user is None:
-        return "OGRESERVER Auth Failed in upload()"
+    check_auth(auth_key)
 
     # stats log the upload
     Log.create(user.id, "UPLOADED", 1, key_parts[1])
@@ -202,3 +182,14 @@ def upload(auth_key):
 def show_result(task_id):
     retval = store_ebook.AsyncResult(task_id).get(timeout=1.0)
     return repr(retval)
+
+
+def check_auth(auth_key):
+    # authenticate user
+    key_parts = base64.b64decode(str(auth_key), "_-").split("+")
+    user = User.validate_auth_key(
+        username=key_parts[0],
+        api_key=key_parts[1]
+    )
+    if user is None:
+        raise Forbidden
