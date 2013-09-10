@@ -18,7 +18,7 @@ from utils import update_progress
 
 
 PROGBAR_LEN = 30
-OGRESERVER = "ogre.oii.me.uk"
+OGRESERVER = "ogre.oii.yt"
 
 # ranked ebook formats
 EBOOK_FORMATS = {
@@ -40,7 +40,7 @@ NO_UPLOADS = 64
 
 last_error = None
 
-def authenticate(username, password):
+def authenticate(host, username, password):
     global last_error
     try:
         # authenticate the user; retrieve an session_key for subsequent requests
@@ -48,7 +48,7 @@ def authenticate(username, password):
             'username': username,
             'password': password
         })
-        req = urllib2.Request(url='http://{0}/auth'.format(OGRESERVER), data=params)
+        req = urllib2.Request(url='http://{0}/auth'.format(host), data=params)
         print req.get_full_url()
         f = urllib2.urlopen(req)
         return f.read()
@@ -71,8 +71,8 @@ def doit(ebook_home, username, password,
 
     global last_error
 
-    if ogreserver is not None:
-        OGRESERVER = ogreserver
+    if ogreserver is None:
+        ogreserver = OGRESERVER
 
     ebook_cache = []
 
@@ -82,7 +82,7 @@ def doit(ebook_home, username, password,
             ebook_cache = f.read().splitlines()
 
     # authenticate user and generate session API key
-    ret = authenticate(username, password)
+    ret = authenticate(ogreserver, username, password)
     if ret in (ERROR_AUTH, AUTH_DENIED):
         return ret
     else:
@@ -272,7 +272,7 @@ def doit(ebook_home, username, password,
         })
         req = urllib2.Request(
             url='http://{0}/post/{1}'.format(
-                OGRESERVER,
+                ogreserver,
                 urllib.quote_plus(session_key)
             )
         )
@@ -335,7 +335,7 @@ def doit(ebook_home, username, password,
                         # ping ogreserver with the book's new hash
                         req = urllib2.Request(
                             url='http://{0}/confirm/{1}'.format(
-                                OGRESERVER,
+                                ogreserver,
                                 urllib.quote_plus(session_key)
                             )
                         )
@@ -373,7 +373,7 @@ def doit(ebook_home, username, password,
                         'ebook': f,
                     }
                     req = opener.open(
-                        "http://{0}/upload/{1}".format(OGRESERVER, urllib.quote_plus(session_key)), params
+                        "http://{0}/upload/{1}".format(ogreserver, urllib.quote_plus(session_key)), params
                     )
                     data = req.read()
 
