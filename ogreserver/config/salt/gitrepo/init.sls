@@ -1,5 +1,4 @@
 include:
-  - create-app-user
   - ssh
 
 /srv/{{ pillar['project_name'] }}:
@@ -7,15 +6,16 @@ include:
     - user: {{ pillar['app_user'] }}
     - group: {{ pillar['app_user'] }}
     - makedirs: true
-    - require:
-      - user: create-app-user
 
 /home/{{ pillar['login_user'] }}/.gitconfig:
   file.managed:
     - source: salt://gitrepo/gitconfig
-    - replace: false
+    - user: {{ pillar['login_user'] }}
+    - group: {{ pillar['login_user'] }}
+    - onlyif: test -f /home/{{ pillar['login_user'] }}/.gitconfig
     - template: jinja
     - mode: 644
+    - replace: false
 
 git-clone-app:
   git.latest:

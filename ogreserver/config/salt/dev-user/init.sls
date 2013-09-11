@@ -1,5 +1,4 @@
 include:
-  - gitrepo
   - ssh
   {% if 'tmux' in pillar.get('extras', []) %}
   - tmux
@@ -43,7 +42,9 @@ dotfiles:
     - submodules: true
     - require:
       - pkg: git
+      {% if pillar.get('github_key_path', False) %}
       - file: github.pky
+      {% endif %}
 
 # run dotfiles install scripts
 {% if 'vim' in pillar.get('extras', []) %}

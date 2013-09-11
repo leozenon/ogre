@@ -9,3 +9,5 @@ create-app-user:
     - require:
       - group: {{ pillar['app_user'] }}
     - order: first
+    - require_in:
+      - file: ssh-home-dir
