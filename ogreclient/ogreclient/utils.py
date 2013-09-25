@@ -54,8 +54,12 @@ def compute_md5(filepath, buf_size=8192):
 @contextlib.contextmanager
 def make_temp_directory():
     temp_dir = tempfile.mkdtemp()
-    yield temp_dir
-    shutil.rmtree(temp_dir)
+    try:
+        yield temp_dir
+    except Exception as e:
+        raise e
+    finally:
+        shutil.rmtree(temp_dir)
 
 
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
