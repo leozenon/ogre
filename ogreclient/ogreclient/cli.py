@@ -11,6 +11,7 @@ import core
 from utils import capture
 from utils import make_temp_directory
 from utils import update_progress
+from utils import CliPrinter
 
 
 def entrypoint():
@@ -82,17 +83,22 @@ def entrypoint():
                 sys.exit(1)
 
     # run some checks and create some config variables
-    conf = prerequisites(args.ogreserver, username, password)
+    conf = prerequisites(args.host, username, password)
 
     # setup a temp path for DRM checks with ebook-convert
     with make_temp_directory() as ebook_convert_path:
-        ret = core.doit(ebook_home, username, password,
-            ogreserver=args.ogreserver,
+        ret = core.doit(
+            ebook_home=ebook_home,
+            username=username,
+            password=password,
+            host=args.host,
             config_dir=conf['config_dir'],
             ebook_cache_path=conf['ebook_cache_path'],
             ebook_cache_temp_path=conf['ebook_cache_temp_path'],
             ebook_convert_path=ebook_convert_path,
-            calibre_ebook_meta_bin=conf['calibre_ebook_meta_bin']
+            calibre_ebook_meta_bin=conf['calibre_ebook_meta_bin'],
+            verbose=args.verbose,
+            quiet=args.quiet,
         )
 
     # exit program
@@ -122,10 +128,18 @@ def prerequisites(ogreserver, username, password):
     ebook_cache_path = "{0}/ebook_cache".format(config_dir)
     ebook_cache_temp_path = "{0}/ebook_cache.tmp".format(config_dir)
 
+    prntr = CliPrinter(None)
+
+    # use existing config if available
+    if os.path.exists(config_dir) and os.path.exists("{0}/app.config".format(config_dir)):
+        with open("{0}/app.config".format(config_dir), "r") as f_config:
+            conf = json.loads(f_config.read())
+
     # create a config directory in $HOME on first run
-    if not os.path.exists(config_dir):
-        print ("Please note that DRM scanning means the first run of ogreclient "
-               "will be much slower than subsequent runs.")
+    elif not os.path.exists(config_dir):
+        prntr.p("Please note that DRM scanning means the first run of ogreclient "
+                "will be much slower than subsequent runs.", notime=True)
+
         os.makedirs(config_dir)
 
         # locate calibre's binaries
@@ -158,7 +172,7 @@ def prerequisites(ogreserver, username, password):
 
     try:
         import dedrm
-        print "Initialized DRM tools v{0}".format(dedrm.PLUGIN_VERSION)
+        prntr.p("Initialized DRM tools v{0}".format(dedrm.PLUGIN_VERSION))
 
         # extract the Kindle key
         kindlekeyfile = os.path.join(config_dir, 'kindlekey.k4i')
@@ -169,10 +183,10 @@ def prerequisites(ogreserver, username, password):
 
             for line in out:
                 if 'K4PC' in line:
-                    print "Extracted Kindle4PC key"
+                    prntr.p("Extracted Kindle4PC key")
                     break
                 elif 'k4Mac' in line:
-                    print "Extracted Kindle4Mac key"
+                    prntr.p("Extracted Kindle4Mac key")
                     break
 
         # extract the Adobe key
@@ -184,32 +198,31 @@ def prerequisites(ogreserver, username, password):
 
             for line in out:
                 if 'Saved a key' in line:
-                    print "Extracted Adobe DE key"
+                    prntr.p("Extracted Adobe DE key")
                     break
 
     except ImportError:
-        print "Downloading latest DRM tools"
+        prntr.p("Downloading latest DRM tools")
 
         # retrieve the DRM tools
         session_key = core.authenticate(ogreserver, username, password)
         if type(session_key) is not str:
-            print "Couldn't get DRM tools"
+            prntr.p("Couldn't get DRM tools")
         else:
             urllib.urlretrieve(
                 "http://{0}/download-dedrm/{1}".format(ogreserver, session_key),
                 "/tmp/dedrm.tar.gz",
                 dl_progress
             )
-            print ""
 
         # install DRM tools
         subprocess.check_output("pip install /tmp/dedrm.tar.gz", shell=True)
 
         try:
             import dedrm
-            print "Initialized DRM tools v{0}".format(dedrm.PLUGIN_VERSION)
+            prntr.p("Initialized DRM tools v{0}".format(dedrm.PLUGIN_VERSION))
         except ImportError:
-            print "Failed to download DRM tools. Please report this error."
+            prntr.e("Failed to download DRM tools. Please report this error.", notime=True)
 
     # return config object
     conf['config_dir'] = config_dir

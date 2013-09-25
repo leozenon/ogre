@@ -1,9 +1,11 @@
 from __future__ import division
 
+import datetime
 import json
 import os
 import shutil
 import subprocess
+import sys
 
 import urllib
 import urllib2
@@ -15,6 +17,8 @@ from utils import compute_md5
 from utils import id_generator
 from utils import make_temp_directory
 from utils import update_progress
+from utils import CliPrinter
+from utils import enum
 
 
 PROGBAR_LEN = 30
@@ -32,6 +36,8 @@ EBOOK_FORMATS = {
     'azw1': 8,
     'tpz': 9,
 }
+
+DRM = enum('unknown', 'decrypted', 'none', 'wrong_key', 'failed', 'corrupt')
 
 
 ERROR_AUTH = 1
@@ -70,7 +76,7 @@ def authenticate(host, username, password):
 def doit(ebook_home, username, password,
          ogreserver=None, config_dir=None, ebook_cache_path=None,
          ebook_cache_temp_path=None, ebook_convert_path=None,
-         calibre_ebook_meta_bin=None):
+         calibre_ebook_meta_bin=None, verbose=False, quiet=False):
 
     global last_error
 
@@ -93,7 +99,11 @@ def doit(ebook_home, username, password,
         session_key = ret
 
     ebooks = []
-    errors = []
+
+    prntr = CliPrinter(datetime.datetime.now(), quiet=quiet)
+
+    # let the user know something is happening
+    prntr.p("Searching for ebooks.. ", nonl=True)
 
     # a relatively quick search for all ebooks
     for root, dirs, files in os.walk(ebook_home):
@@ -109,12 +119,12 @@ def doit(ebook_home, username, password,
 
     i = 0
     total = len(ebooks)
-    print "Discovered {0} files".format(total)
+    prntr.p("Discovered {0} files".format(total))
     if total == 0:
         return NO_EBOOKS
 
-    print "Scanning ebook meta data and checking DRM.."
-    update_progress(0, length=PROGBAR_LEN)
+    prntr.p("Scanning ebook meta data and checking DRM..")
+    #update_progress(0, length=PROGBAR_LEN)
     ebooks_dict = {}
     can_decrypt = None
 
@@ -137,7 +147,8 @@ def doit(ebook_home, username, password,
 
             if extracted.find("EPubException") > 0:
                 # remove any corrupt
-                errors.append(("Corrupt ebook", item[1] + item[2]))
+                if verbose:
+                    prntr.e("{0}{1}".format(item[1], item[2]), CliPrinter.CORRUPT)
                 continue
 
             if can_decrypt:
@@ -189,21 +200,24 @@ def doit(ebook_home, username, password,
                                 state = DRM.failed
                                 break
 
-                    if state == DRM.none:
-                        print "[NONE] {0}".format(item[0])
-                    elif state == DRM.decrypted:
-                        print "[DRM ] {0}".format(item[0])
-                    elif state == DRM.wrong_key:
-                        print "[DRM ] {0}".format(item[0])
-                    elif state == DRM.failed:
-                        print "[DRM ] {0}".format(item[0])
-                    elif state == DRM.corrupt:
-                        print "[DRM ] {0}".format(item[0])
-                    else:
-                        print "[UNKW] {0}\t{1}".format(item[0], out)
+                    if verbose:
+                        if state == DRM.none:
+                            prntr.p("{0}".format(item[0]), CliPrinter.NONE)
+                        elif state == DRM.decrypted:
+                            prntr.p("{0}".format(item[0]), CliPrinter.DEDRM, success=True)
+                        elif state == DRM.wrong_key:
+                            prntr.e("{0}".format(item[0]), CliPrinter.WRONG_KEY)
+                        elif state == DRM.failed:
+                            prntr.e("{0}".format(item[0]), CliPrinter.DEDRM,
+                                extra=' '.join([l.strip() for l in out])
+                            )
+                        elif state == DRM.corrupt:
+                            prntr.e("{0}".format(item[0]), CliPrinter.CORRUPT)
+                        else:
+                            prntr.p("{0}\t{1}".format(item[0], out), CliPrinter.UNKNOWN)
 
                 except Exception as e:
-                    print "Fatal Exception on {0}: {1}".format(item[0], e)
+                    prntr.e("Fatal Exception on {0}".format(item[0]), excp=e)
                     continue
 
             # initialize all the metadata we attempt to extract
@@ -311,23 +325,16 @@ def doit(ebook_home, username, password,
                     ebooks_dict[authortitle].update(meta)
 
             i += 1
-            update_progress(float(i) / float(total), length=PROGBAR_LEN)
+            #update_progress(float(i) / float(total), length=PROGBAR_LEN)
 
-    sys.stdout.flush()
-
-    print "\nFound %s ebooks" % len(ebooks_dict)
+    prntr.p("\nFound {0} ebooks".format(len(ebooks_dict)))
 
     # move the temp cache onto the real ogre cache
     statinfo = os.stat(ebook_cache_temp_path)
     if statinfo.st_size > 0:
         os.rename(ebook_cache_temp_path, ebook_cache_path)
 
-    print "Come on sucker, lick my battery"
-
-    if len(errors) > 0:
-        print "Sadly, some errors occurred:"
-        for e in errors:
-            print "\t[%s] %s" % (e[0], e[1])
+    prntr.p("Come on sucker, lick my battery")
 
     try:
         # post the json array of ebook data
@@ -354,12 +361,12 @@ def doit(ebook_home, username, password,
         last_error = e
         return ERROR_MUSHROOM
 
-    # print server messages
+    # display server messages
     for msg in response['messages']:
         if len(msg) == 2:
-            print "%s %s" % msg
+            prntr.p("{0} {1}".format(msg[0], msg[1]), CliPrinter.RESPONSE)
         else:
-            print msg
+            prntr.p(msg, CliPrinter.RESPONSE)
 
     if len(response['ebooks_to_upload']) == 0:
         return NO_UPLOADS
@@ -367,7 +374,7 @@ def doit(ebook_home, username, password,
     # grammatically correct messages are nice
     plural = "s" if len(response['ebooks_to_upload']) > 1 else ""
 
-    print "Uploading %s file%s. Go make a brew." % (str(len(response['ebooks_to_upload'])), plural)
+    prntr.p("Uploading {0} file{1}. Go make a brew.".format(len(response['ebooks_to_upload']), plural))
 
     # tag each book with ogre supplied ebook_id
     for newbook in response['new_books']:
@@ -441,7 +448,7 @@ def doit(ebook_home, username, password,
                     )
                     data = req.read()
 
-                    print data
+                    prntr.p(data)
 
                 except (HTTPError, URLError), e:
                     last_error = e
