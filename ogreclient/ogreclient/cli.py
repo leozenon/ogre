@@ -103,19 +103,19 @@ def entrypoint():
 
     # exit program
     if ret > 0:
-        if ret == core.ERROR_AUTH:
+        if ret == core.RETURN_CODES.error_auth:
             msg = "Something went wrong, contact tha spodz with..\nCode egg: {0}".format(core.last_error)
-        elif ret == core.ERROR_BACON:
+        elif ret == core.RETURN_CODES.error_bacon:
             msg = "Something went wrong, contact tha spodz with..\nCode bacon: {0}".format(core.last_error)
-        elif ret == core.ERROR_MUSHROOM:
+        elif ret == core.RETURN_CODES.error_mushroom:
             msg = "Something went wrong, contact tha spodz with..\nCode mushroom: {0}".format(core.last_error)
-        elif ret == core.ERROR_SPINACH:
+        elif ret == core.RETURN_CODES.error_spinach:
             msg = "Something went wrong, contact tha spodz with..\nCode spinach: {0}".format(core.last_error)
-        elif ret == core.AUTH_DENIED:
+        elif ret == core.RETURN_CODES.auth_denied:
             msg = "Permission denied. This is a private system."
-        elif ret == core.NO_EBOOKS:
+        elif ret == core.RETURN_CODES.no_ebooks:
             msg = "No ebooks found. Is $EBOOK_HOME set correctly?"
-        elif ret == core.NO_UPLOADS:
+        elif ret == core.RETURN_CODES.no_uploads:
             msg = "Nothing to upload.."
 
         sys.stderr.write("{0}\n".format(msg))

@@ -39,16 +39,18 @@ EBOOK_FORMATS = {
 
 DRM = enum('unknown', 'decrypted', 'none', 'wrong_key', 'failed', 'corrupt')
 
-
-ERROR_AUTH = 1
-ERROR_BACON = 2
-ERROR_MUSHROOM = 4
-ERROR_SPINACH = 8
-AUTH_DENIED = 16
-NO_EBOOKS = 32
-NO_UPLOADS = 64
+RETURN_CODES = enum(
+    'error_auth',
+    'error_bacon',
+    'error_mushroom',
+    'error_spinach',
+    'auth_denied',
+    'no_ebooks',
+    'no_uploads',
+)
 
 last_error = None
+
 
 def authenticate(host, username, password):
     global last_error
@@ -64,13 +66,13 @@ def authenticate(host, username, password):
 
     except HTTPError as e:
         if e.getcode() == 403:
-            return AUTH_DENIED
+            return RETURN_CODES.auth_denied
         else:
             last_error = e
-            return ERROR_AUTH
+            return RETURN_CODES.error_auth
     except URLError as e:
         last_error = e
-        return ERROR_AUTH
+        return RETURN_CODES.error_auth
 
 
 def doit(ebook_home, username, password,
@@ -93,7 +95,7 @@ def doit(ebook_home, username, password,
 
     # authenticate user and generate session API key
     ret = authenticate(ogreserver, username, password)
-    if ret in (ERROR_AUTH, AUTH_DENIED):
+    if ret in (RETURN_CODES.error_auth, RETURN_CODES.auth_denied):
         return ret
     else:
         session_key = ret
@@ -121,7 +123,7 @@ def doit(ebook_home, username, password,
     total = len(ebooks)
     prntr.p("Discovered {0} files".format(total))
     if total == 0:
-        return NO_EBOOKS
+        return RETURN_CODES.no_ebooks
 
     prntr.p("Scanning ebook meta data and checking DRM..")
     #update_progress(0, length=PROGBAR_LEN)
@@ -356,10 +358,10 @@ def doit(ebook_home, username, password,
 
     except ValueError as e:
         last_error = e
-        return ERROR_BACON
+        return RETURN_CODES.error_bacon
     except (HTTPError, URLError) as e:
         last_error = e
-        return ERROR_MUSHROOM
+        return RETURN_CODES.error_mushroom
 
     # display server messages
     for msg in response['messages']:
@@ -369,7 +371,7 @@ def doit(ebook_home, username, password,
             prntr.p(msg, CliPrinter.RESPONSE)
 
     if len(response['ebooks_to_upload']) == 0:
-        return NO_UPLOADS
+        return RETURN_CODES.no_uploads
 
     # grammatically correct messages are nice
     plural = "s" if len(response['ebooks_to_upload']) > 1 else ""
@@ -452,7 +454,7 @@ def doit(ebook_home, username, password,
 
                 except (HTTPError, URLError), e:
                     last_error = e
-                    return ERROR_SPINACH
+                    return RETURN_CODES.error_spinach
                 except IOError, e:
                     continue
                 finally:
