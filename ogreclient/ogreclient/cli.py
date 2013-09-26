@@ -162,11 +162,6 @@ def prerequisites(ogreserver, username, password):
         with open("{0}/app.config".format(config_dir), "w") as f_config:
             f_config.write(json.dumps(conf))
 
-    else:
-        # read in config from $HOME
-        with open("{0}/app.config".format(config_dir), "r") as f_config:
-            conf = json.loads(f_config.read())
-
     if ogreserver is None:
         ogreserver = core.OGRESERVER
 
