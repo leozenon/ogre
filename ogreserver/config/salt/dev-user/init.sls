@@ -57,6 +57,7 @@ dotfiles-install-vim:
     - require:
       - git: dotfiles
       - pkg: dev_packages
+      - pkg: extra_vim
 
 # prevent ~/.viminfo being owned by root
 viminfo-touch:

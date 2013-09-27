@@ -1,7 +1,11 @@
 rethinkdb-pkgrepo:
   pkgrepo.managed:
     - humanname: RethinkDB PPA
-    - name: deb http://ppa.launchpad.net/rethinkdb/ppa/ubuntu precise main
+    {% if grains['os'] == "Debian" %}
+    - name: deb http://ppa.launchpad.net/rethinkdb/ppa/ubuntu lucid main
+    {% elif grains['os'] == "Ubuntu" %}
+    - name: deb http://ppa.launchpad.net/rethinkdb/ppa/ubuntu {{ grains['oscodename'] }} main
+    {% endif %}
     - file: /etc/apt/sources.list.d/rethinkdb.list
     - keyid: 11D62AD6
     - keyserver: keyserver.ubuntu.com
