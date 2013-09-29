@@ -1,7 +1,7 @@
 import base64
 import json
 
-from flask import request, redirect, session, url_for, render_template, jsonify
+from flask import request, redirect, session, url_for, render_template, jsonify, make_response
 from flask.ext.login import login_required, login_user, logout_user, current_user
 
 from werkzeug.exceptions import Forbidden
@@ -108,6 +108,17 @@ def download(pk, fmt=None):
 @login_required
 def dedrm():
     return render_template("dedrm.html")
+
+
+@app.route("/download-dedrm/<auth_key>")
+def download_dedrm(auth_key):
+    check_auth(auth_key)
+
+    # supply the latest DRM tools to the client
+    with open("/var/pypiserver-cache/dedrm-6.0.7.tar.gz", "r") as f:
+        data = f.read()
+        response = make_response(data)
+        return response
 
 
 @app.route("/post/<auth_key>", methods=['POST'])
