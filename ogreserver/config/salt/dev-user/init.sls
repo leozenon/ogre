@@ -5,7 +5,7 @@ include:
   {% endif %}
 
 dev_packages:
-  pkg.installed:
+  pkg.latest:
     - names:
       - curl
       - man-db
@@ -16,13 +16,13 @@ dev_packages:
 # install some extra packages
 {% for package_name in pillar.get('extras', []) %}
 extra_{{ package_name }}:
-  pkg.installed:
+  pkg.latest:
     - name: {{ package_name }}
 {% endfor %}
 
 # set the default shell
 shell-{{ pillar['shell'] }}:
-  pkg.installed:
+  pkg.latest:
     - name: {{ pillar['shell'] }}
 
 modify-login-user:

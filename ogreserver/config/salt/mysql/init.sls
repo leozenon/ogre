@@ -1,5 +1,5 @@
 mysql-server-5.5:
-  pkg.installed:
+  pkg.latest:
     - debconf: salt://mysql/mysql-server-5.5.ans
 
 mysql:
@@ -9,7 +9,7 @@ mysql:
       - pkg: mysql-server-5.5
 
 python-mysqldb:
-  pkg.installed
+  pkg.latest
 
 
 create-mysql-db:

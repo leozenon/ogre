@@ -1,5 +1,5 @@
 vim:
-  pkg.installed
+  pkg.latest
 
 /home/{{ pillar['login_user'] }}/.vimrc:
   file.managed:

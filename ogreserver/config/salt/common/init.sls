@@ -7,10 +7,10 @@ include:
 
 git:
   pkg:
-    - installed
+    - latest
 
 required-packages:
-  pkg.installed:
+  pkg.latest:
     - names:
       - ntp
       - debconf-utils

@@ -3,11 +3,10 @@ include:
   - create-app-user
 
 pip-dependencies:
-  pkg.installed:
+  pkg.latest:
     - names:
       - python-dev
       - build-essential
-      - python-pip
       - python-virtualenv
     - require:
       - file: apt-no-recommends

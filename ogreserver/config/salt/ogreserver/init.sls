@@ -51,7 +51,7 @@ extend:
 
 
 pip-dependencies-extra:
-  pkg.installed:
+  pkg.latest:
     - names:
       - libmysqlclient-dev
       - libevent-dev

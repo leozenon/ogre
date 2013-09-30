@@ -8,10 +8,10 @@
 # TODO support no .tmux.conf in dotfiles; install a default
 
 tmux:
-  pkg.installed
+  pkg.latest
 
 tmux-stow:
-  pkg.installed:
+  pkg.latest:
     - name: stow
 
 dotfiles-install-tmux:
