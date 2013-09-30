@@ -2,11 +2,19 @@ compass-rubygems:
   pkg.installed:
     - name: rubygems
 
+compass-sass-gem:
+  gem.installed:
+    - name: sass
+    - version: 3.2.10
+    - require:
+      - pkg: rubygems
+
 compass-gem:
   gem.installed:
     - name: compass
     - require:
       - pkg: rubygems
+      - gem: compass-sass-gem
 
 compass-supervisor-config:
   file.managed:
