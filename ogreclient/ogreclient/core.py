@@ -76,14 +76,14 @@ def authenticate(host, username, password):
 
 
 def doit(ebook_home, username, password,
-         ogreserver=None, config_dir=None, ebook_cache_path=None,
+         host=None, config_dir=None, ebook_cache_path=None,
          ebook_cache_temp_path=None, ebook_convert_path=None,
          calibre_ebook_meta_bin=None, verbose=False, quiet=False):
 
     global last_error
 
-    if ogreserver is None:
-        ogreserver = OGRESERVER
+    if host is None:
+        host = OGRESERVER
 
     ebook_cache = []
 
@@ -94,7 +94,7 @@ def doit(ebook_home, username, password,
             #ebook_cache = json.loads(data)
 
     # authenticate user and generate session API key
-    ret = authenticate(ogreserver, username, password)
+    ret = authenticate(host, username, password)
     if ret in (RETURN_CODES.error_auth, RETURN_CODES.auth_denied):
         return ret
     else:
@@ -346,7 +346,7 @@ def doit(ebook_home, username, password,
         })
         req = urllib2.Request(
             url='http://{0}/post/{1}'.format(
-                ogreserver,
+                host,
                 urllib.quote_plus(session_key)
             )
         )
@@ -408,7 +408,7 @@ def doit(ebook_home, username, password,
                         # ping ogreserver with the book's new hash
                         req = urllib2.Request(
                             url='http://{0}/confirm/{1}'.format(
-                                ogreserver,
+                                host,
                                 urllib.quote_plus(session_key)
                             )
                         )
@@ -446,7 +446,7 @@ def doit(ebook_home, username, password,
                         'ebook': f,
                     }
                     req = opener.open(
-                        "http://{0}/upload/{1}".format(ogreserver, urllib.quote_plus(session_key)), params
+                        "http://{0}/upload/{1}".format(host, urllib.quote_plus(session_key)), params
                     )
                     data = req.read()
 

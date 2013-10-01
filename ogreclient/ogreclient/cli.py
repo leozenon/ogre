@@ -21,8 +21,8 @@ def entrypoint():
         help=("The directory where you keep your ebooks. "
               "You can also set the environment variable $EBOOK_HOME"))
     parser.add_argument(
-        '--ogreserver',
-        help="Override the default server host of oii.ogre.me.uk")
+        '--host',
+        help="Override the default server host of oii.ogre.yt")
     parser.add_argument(
         '--username', '-u',
         help=("Your O.G.R.E. username. "
@@ -122,7 +122,7 @@ def entrypoint():
         sys.exit(ret)
 
 
-def prerequisites(ogreserver, username, password):
+def prerequisites(host, username, password):
     # setup some ebook cache file paths
     config_dir = "{0}/{1}".format(os.environ.get('XDG_CONFIG_HOME', os.path.expanduser('~/.config')), "ogre")
     ebook_cache_path = "{0}/ebook_cache".format(config_dir)
@@ -162,8 +162,8 @@ def prerequisites(ogreserver, username, password):
         with open("{0}/app.config".format(config_dir), "w") as f_config:
             f_config.write(json.dumps(conf))
 
-    if ogreserver is None:
-        ogreserver = core.OGRESERVER
+    if host is None:
+        host = core.OGRESERVER
 
     try:
         import dedrm
@@ -200,12 +200,12 @@ def prerequisites(ogreserver, username, password):
         prntr.p("Downloading latest DRM tools")
 
         # retrieve the DRM tools
-        session_key = core.authenticate(ogreserver, username, password)
+        session_key = core.authenticate(host, username, password)
         if type(session_key) is not str:
             prntr.p("Couldn't get DRM tools")
         else:
             urllib.urlretrieve(
-                "http://{0}/download-dedrm/{1}".format(ogreserver, session_key),
+                "http://{0}/download-dedrm/{1}".format(host, session_key),
                 "/tmp/dedrm.tar.gz",
                 dl_progress
             )
