@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+{% block body %}
+
+{% if not pages %}
+<p class="empty-listing">No docs? Shame on oii.</p>
+{% endif %}
+
+<ul id="ebook-listing">
+
+{% for p in pages %}
+
+<li class="ebook">
+<p><a href="docs/{{p.filename}}">{{p.summary}}</a></p> 
+</li>
+
+{% endfor %}
+
+</ul>
+{% endblock %}

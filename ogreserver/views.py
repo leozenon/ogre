@@ -1,7 +1,10 @@
 import base64
+import fnmatch
 import json
+import os
 
-from flask import request, redirect, session, url_for, render_template, jsonify, make_response
+from flask import request, redirect, session, url_for, abort
+from flask import render_template, render_template_string, jsonify, make_response
 from flask.ext.login import login_required, login_user, logout_user, current_user
 
 from werkzeug.exceptions import Forbidden
@@ -57,10 +60,70 @@ def logout():
     return redirect(url_for('login'))
 
 
+TEMPLATE_MD_START = (
+    '{% extends "layout.html" %}'
+    '{% block body %}'
+    '{% filter markdown %}'
+)
+TEMPLATE_MD_END = (
+    '{% endfilter %}'
+    '{% endblock %}'
+)
+
+@app.route("/docs")
+@app.route("/docs/<path:doco>")
+@login_required
+def docs(doco=None):
+    print doco
+    if doco is None:
+        pages = []
+
+        # iterate all the docs
+        for root, dirs, files in os.walk('ogreserver/docs'):
+            for filename in fnmatch.filter(files, '*.md'):
+                # extract the summary from the markdown header
+                summary = None
+                with open(os.path.join(root, filename), 'r') as f:
+                    for line in f:
+                        if line == '\n':
+                            break
+                        elif line.startswith('Summary'):
+                            summary = line[9:]
+
+                pages.append({
+                    'summary': summary,
+                    'filename': filename,
+                })
+
+        return render_template('docs.html', pages=pages)
+
+    else:
+        if not os.path.exists('ogreserver/docs/{0}.md'.format(doco)):
+            abort(404)
+
+        # read in a markdown file from the docs
+        with open('ogreserver/docs/{0}.md'.format(doco), 'r') as f:
+            # remove the markdown header
+            content = []
+            found_content = False
+            for line in f:
+                if found_content:
+                    content += line
+                elif line == '\n':
+                    found_content = True
+
+        # render a string for the Flask jinja template engine
+        return render_template_string('{0}{1}{2}'.format(
+            TEMPLATE_MD_START,
+            ''.join(content),
+            TEMPLATE_MD_END,
+        ))
+
+
 @app.route("/home")
 @login_required
 def home():
-    return dedrm()
+    return render_template("list.html")
 
 
 @app.route("/list", methods=['GET', 'POST'])
@@ -102,12 +165,6 @@ def view(sdbkey=None):
 @login_required
 def download(pk, fmt=None):
     return redirect(DataStore.get_ebook_url(pk, fmt))
-
-
-@app.route("/dedrm")
-@login_required
-def dedrm():
-    return render_template("dedrm.html")
 
 
 @app.route("/download-dedrm/<auth_key>")

@@ -9,6 +9,7 @@ from flask import Flask, render_template
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask.ext.login import LoginManager
 from flask.ext.uploads import UploadSet, ALL, configure_uploads
+from flask.ext.markdown import Markdown
 
 
 # attempt to load some config
@@ -39,6 +40,10 @@ celery.config_from_object(app.config)
 
 # setup SQLAlchemy
 db = SQLAlchemy(app)
+
+
+# setup the markdown parser
+markdown = Markdown(app, extensions=['footnotes'])
 
 
 # declare some error handler pages
