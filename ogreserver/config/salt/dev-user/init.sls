@@ -72,7 +72,6 @@ viminfo-touch:
 dotfiles-install-zsh:
   cmd.run:
     - name: ./install.sh -f zsh &> /dev/null
-    - unless: test -L /home/{{ pillar['login_user'] }}/.zshrc
     - cwd: /home/{{ pillar['login_user'] }}/dotfiles
     - user: {{ pillar['login_user'] }}
     - require:
@@ -84,7 +83,6 @@ dotfiles-install-zsh:
 dotfiles-install-git:
   cmd.run:
     - name: ./install.sh -f git &> /dev/null
-    - unless: test -L /home/{{ pillar['login_user'] }}/.gitconfig
     - cwd: /home/{{ pillar['login_user'] }}/dotfiles
     - user: {{ pillar['login_user'] }}
     - require:
