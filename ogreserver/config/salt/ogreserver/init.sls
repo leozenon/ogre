@@ -24,10 +24,6 @@ extend:
         - virtualenv: app-virtualenv
         - git: git-clone-app
 
-  git-clone-app:
-    git.latest:
-      - rev: salt
-
   compass-supervisor-config:
     file.managed:
       - context:
