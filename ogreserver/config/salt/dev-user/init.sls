@@ -1,4 +1,5 @@
 include:
+  - common
   - ssh
   {% if 'tmux' in pillar.get('extras', []) %}
   - tmux
