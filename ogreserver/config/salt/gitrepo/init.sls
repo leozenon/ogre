@@ -1,4 +1,5 @@
 include:
+  - common
   - ssh
 
 /srv/{{ pillar['project_name'] }}:
