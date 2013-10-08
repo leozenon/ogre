@@ -7,6 +7,9 @@
 
 # TODO support no .tmux.conf in dotfiles; install a default
 
+include:
+  - common
+
 tmux:
   pkg.latest
 
