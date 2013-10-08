@@ -16,7 +16,7 @@ ogreserver/static/stylesheets
 flask.app.conf.py
 
 sesame.ogre.key
-github.ogre.pky
+github.*.pky
 dev_vars.sls
 !dev_vars.sls.encrypted
 prod_vars.sls
