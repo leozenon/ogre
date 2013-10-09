@@ -22,7 +22,6 @@ dev_packages:
     {% set package_name = name %}
   {% endif %}
 
-extra_{{ name }}:
   pkg.latest:
     - name: {{ package_name }}
 {% endfor %}
