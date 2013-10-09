@@ -15,8 +15,14 @@ dev_packages:
       - stow
 
 # install some extra packages
-{% for package_name in pillar.get('extras', []) %}
-extra_{{ package_name }}:
+{% for name in pillar.get('extras', []) %}
+  {% if name == "vim" and grains['os'] == "Debian" %}
+    {% set package_name = "vim-nox" %}
+  {% else %}
+    {% set package_name = name %}
+  {% endif %}
+
+extra_{{ name }}:
   pkg.latest:
     - name: {{ package_name }}
 {% endfor %}
