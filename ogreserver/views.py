@@ -65,6 +65,7 @@ TEMPLATE_MD_START = (
     '{% block body %}'
     '{% filter markdown %}'
 )
+IMPROVE_URL = '\n[Improve this page](https://github.com/oii/ogre/blob/develop/ogreserver/docs/{0}.md)'
 TEMPLATE_MD_END = (
     '{% endfilter %}'
     '{% endblock %}'
@@ -112,10 +113,14 @@ def docs(doco=None):
                 elif line == '\n':
                     found_content = True
 
+        # add a link to edit/improve this page
+        improve_url = IMPROVE_URL.format(doco)
+
         # render a string for the Flask jinja template engine
-        return render_template_string('{0}{1}{2}'.format(
+        return render_template_string('{0}{1}{2}{3}'.format(
             TEMPLATE_MD_START,
             ''.join(content),
+            improve_url,
             TEMPLATE_MD_END,
         ))
 
