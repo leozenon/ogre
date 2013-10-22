@@ -14,13 +14,9 @@ extend:
   supervisor-config:
     file.managed:
       - context:
-          runas: {{ pillar['login_user'] }}
+          sock_mode: 0777
 
   supervisor-log-dir:
-    file.directory:
-      - user: {{ pillar['login_user'] }}
-
-  supervisor-sock-dir:
     file.directory:
       - user: {{ pillar['login_user'] }}
 
