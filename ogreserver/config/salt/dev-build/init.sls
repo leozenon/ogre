@@ -14,7 +14,7 @@ extend:
   supervisor-config:
     file.managed:
       - context:
-          sock_mode: 0777
+          socket_mode: 0777
 
   supervisor-log-dir:
     file.directory:
